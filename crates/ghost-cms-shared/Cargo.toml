@@ -1,0 +1,30 @@
+[package]
+name = "ghost-cms-shared"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Shared application layer (config resolution, rendering, error diagnosis, upload orchestration) for the ghost-cms frontends."
+publish = false
+
+[lib]
+name = "ghost_cms_shared"
+path = "src/lib.rs"
+
+[dependencies]
+directories.workspace = true
+ghost-cms-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

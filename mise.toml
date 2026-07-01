@@ -1,0 +1,24 @@
+# Dev toolchain, provisioned by `mise install`. The Rust toolchain itself is
+# owned by rust-toolchain.toml; mise manages the auxiliary tools the recipes use.
+
+[tools]
+just = "latest"
+lefthook = "latest"
+typos = "latest"
+taplo = "latest"
+
+# cargo-binstall fetches prebuilt binaries for the cargo: backend tools below.
+cargo-binstall = "latest"
+"cargo:cargo-nextest" = "latest"
+"cargo:cargo-deny" = "latest"
+"cargo:cargo-machete" = "latest"
+"cargo:cargo-sort" = "latest"
+
+[settings.cargo]
+binstall = true
+
+# Non-secret defaults. The site URL and Staff Access Token are NOT set here —
+# provide them via `.env` (git-ignored) or the 1Password flow (.env.op).
+[env]
+GHOST_ACCEPT_VERSION = "v5.0"
+GHOST_BLOG_DIR = "blog"

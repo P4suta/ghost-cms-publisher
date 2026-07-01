@@ -1,0 +1,17 @@
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# secrets — never commit the resolved token. `.env.example` (placeholders only)
+# is committed; `.env` (real values) and `.env.op` (op:// refs) are not.
+.env
+.env.op
+
+# publish state cache (Ghost is the source of truth; this is a local optimization)
+blog/.ghost-cms/
+
+# insta pending snapshots
+**/*.snap.new
+
+# local Claude Code settings (personal, machine-specific)
+.claude/settings.local.json

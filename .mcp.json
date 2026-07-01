@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ghost-cms": {
+      "command": "op",
+      "args": ["run", "--env-file", ".env.op", "--", "ghost-cms-mcp"],
+      "env": {
+        "GHOST_BLOG_DIR": "blog"
+      }
+    }
+  }
+}

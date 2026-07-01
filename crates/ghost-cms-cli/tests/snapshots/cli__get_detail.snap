@@ -1,0 +1,10 @@
+---
+source: crates/ghost-cms-cli/tests/cli.rs
+expression: stdout(&out)
+---
+id          p1
+slug        hello
+status      published
+title       Hello World
+url         https://example.ghost.io/p/hello/
+updated_at  2026-06-26T00:00:00.000Z

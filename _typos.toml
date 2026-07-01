@@ -1,0 +1,29 @@
+# typos — strict spell check across the repo.
+# Fix typos rather than suppress them; the allowlist below is the minimum
+# needed for the project's technical vocabulary.
+
+[default]
+locale = "en-us"
+
+[default.extend-words]
+cli = "cli"
+Cli = "Cli"
+frontmatter = "frontmatter"
+Frontmatter = "Frontmatter"
+# Deliberate near-miss slugs used to test the "did you mean" / nearest-slug logic.
+helo = "helo"
+abuot = "abuot"
+
+[default.extend-identifiers]
+comrak = "comrak"
+rmcp = "rmcp"
+Lexical = "Lexical"
+
+[files]
+extend-exclude = ["target/**", "**/*.lock", "**/*.snap", "**/*.snap.new", "node_modules/**"]
+
+[type.toml]
+extend-glob = ["*.toml"]
+
+[type.rust]
+extend-glob = ["*.rs"]
