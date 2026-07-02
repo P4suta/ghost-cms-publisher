@@ -1,7 +1,6 @@
 # Contributing
 
-Thanks for your interest in ghost-cms-publisher! This document covers the local
-setup, the quality gates, and how releases work.
+Local setup, quality gates, and how releases work.
 
 ## Development setup
 

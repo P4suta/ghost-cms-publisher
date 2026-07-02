@@ -1,7 +1,7 @@
-# lefthook — git hooks. Install once with `just hooks`.
+# lefthook git hooks. Install with `just hooks`.
 #
-# Formatters run with stage_fixed: the author writes code, lefthook fixes
-# formatting on the way to the index. CI re-runs the same checks in --check mode.
+# Formatters use stage_fixed: lefthook re-stages the files it reformats. CI re-runs
+# the same checks in --check mode.
 
 assert_lefthook_installed: true
 

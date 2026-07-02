@@ -218,19 +218,9 @@ just lint    # fmt-check + clippy (-D warnings) + cargo-deny + typos + machete
 just test    # unit + wiremock integration tests
 ```
 
-The workspace enforces strict Clippy lints (`pedantic`/`nursery`, `unwrap_used`
-denied outside tests). Library code returns `Result`; binaries own the
-`anyhow`/exit boundary.
-
-CLI output is locked by snapshot tests (`crates/ghost-cms-cli/tests/cli.rs`,
-[`insta`](https://insta.rs)). After an intentional change to rendered output,
-review and accept the new snapshots:
-
-```sh
-INSTA_UPDATE=always cargo test -p ghost-cms-cli --test cli   # accept new output
-# or, interactively:
-cargo insta review
-```
+Library code returns `Result`; binaries own the `anyhow`/exit boundary. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup, the full quality gates, snapshot
+tests, and the release flow.
 
 ## License
 

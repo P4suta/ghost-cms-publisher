@@ -49,7 +49,7 @@ impl GhostServer {
     }
 
     #[tool(
-        description = "Idempotently publish/update a Ghost post from a Markdown file (frontmatter-driven). Looks up by slug; creates or updates with updated_at conflict detection."
+        description = "Publish/update a Ghost post from a Markdown file (frontmatter-driven). Idempotent by slug."
     )]
     async fn ghost_publish_markdown(
         &self,

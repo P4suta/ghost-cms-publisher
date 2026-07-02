@@ -31,9 +31,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 
 # --- auth / crypto ---
 hex = "0.4"
-# v10 requires selecting a crypto provider; use the pure-Rust backend (keeps
-# cross-compilation simple). We sign HS256 from a raw secret, so `use_pem` is
-# not needed.
+# v10 requires a crypto provider; pure-Rust backend keeps cross-compilation simple.
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 sha2 = "0.11"
 

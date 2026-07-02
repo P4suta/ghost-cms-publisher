@@ -1,8 +1,7 @@
 # ghost-cms-publisher task entry points.
 #
 # Recipes that talk to Ghost are wrapped in `op run` so secrets come from
-# 1Password (see .env.op) and never touch the repo. Pure dev recipes
-# (build/test/lint) need no secrets and run plainly.
+# 1Password (see .env.op) and never touch the repo. Dev recipes need no secrets.
 
 # Inject GHOST_* from 1Password references in .env.op.
 op := "op run --env-file .env.op --"

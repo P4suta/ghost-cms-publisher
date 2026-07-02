@@ -4,8 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    # `labeled`/`unlabeled` are needed so the release-gate re-evaluates when the
-    # approval label is toggled on a release PR.
+    # `labeled`/`unlabeled` re-run the release-gate when the approval label toggles.
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
@@ -77,9 +76,8 @@ jobs:
       - uses: taiki-e/install-action@16b05812d776ae1dfaabc8277e421fb6d2506419 # v2.82.7
         with:
           tool: cargo-deny
-      # Advisories are checked on a schedule in audit.yml (the RUSTSEC DB moves
-      # daily and must not turn an unrelated PR red). Here we gate only the
-      # deterministic checks.
+      # Advisories run on a schedule in audit.yml (the RUSTSEC DB moves daily and
+      # would turn unrelated PRs red); gate only the deterministic checks here.
       - run: cargo deny check bans licenses sources
 
   doc:
@@ -116,14 +114,13 @@ jobs:
         with:
           tool: cargo-nextest
       - run: cargo nextest run --workspace --locked
-      # nextest does not run doctests; cover them separately.
       - run: cargo test --doc --workspace --locked
 
   msrv:
     name: msrv (1.95)
     runs-on: ubuntu-latest
-    # rust-toolchain.toml pins `stable`; RUSTUP_TOOLCHAIN overrides it so every
-    # cargo call in this job actually uses the MSRV.
+    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml's `stable` pin so this job
+    # builds against the MSRV.
     env:
       RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
