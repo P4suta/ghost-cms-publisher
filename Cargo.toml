@@ -58,7 +58,7 @@ inquire = { version = "0.7", features = ["fuzzy"] }
 notify-debouncer-mini = "0.6"
 open = "5"
 owo-colors = { version = "4", features = ["supports-colors"] }
-toml = "0.8"
+toml = "1.1"
 
 # --- errors / logging ---
 anyhow = "1"
