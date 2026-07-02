@@ -99,7 +99,7 @@ pub fn render_html(body_md: &str, allow_raw_html: bool) -> String {
     options.extension.autolink = true;
     options.extension.tasklist = true;
     options.extension.footnotes = true;
-    options.render.unsafe_ = allow_raw_html;
+    options.render.r#unsafe = allow_raw_html;
     comrak::markdown_to_html(body_md, &options)
 }
 
