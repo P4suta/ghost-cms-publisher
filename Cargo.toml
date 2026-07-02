@@ -31,11 +31,14 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 
 # --- auth / crypto ---
 hex = "0.4"
-jsonwebtoken = "9"
-sha2 = "0.10"
+# v10 requires selecting a crypto provider; use the pure-Rust backend (keeps
+# cross-compilation simple). We sign HS256 from a raw secret, so `use_pem` is
+# not needed.
+jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
+sha2 = "0.11"
 
 # --- content ---
-comrak = "0.30"
+comrak = "0.52"
 regex = "1"
 
 # --- serialization / schema ---
@@ -48,17 +51,17 @@ serde_yaml_ng = "0.10"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 clap_mangen = "0.3"
-rmcp = { version = "0.7", features = ["server", "macros", "transport-io"] }
+rmcp = { version = "2", features = ["server", "macros", "transport-io"] }
 
 # --- CLI UX ---
 comfy-table = "7"
 directories = "6"
 indicatif = "0.18"
-inquire = { version = "0.7", features = ["fuzzy"] }
-notify-debouncer-mini = "0.6"
+inquire = { version = "0.9", features = ["fuzzy"] }
+notify-debouncer-mini = "0.7"
 open = "5"
 owo-colors = { version = "4", features = ["supports-colors"] }
-toml = "0.8"
+toml = "1"
 
 # --- errors / logging ---
 anyhow = "1"
