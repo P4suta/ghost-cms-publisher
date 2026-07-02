@@ -10,6 +10,13 @@ automation is activated.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated dependencies to current major versions: comrak 0.52, jsonwebtoken 10
+  (pure-Rust `rust_crypto` backend), rmcp 2.0, toml 1, sha2 0.11, inquire 0.9,
+  and notify-debouncer-mini 0.7, plus grouped minor/patch bumps. No user-facing
+  behavior changes; MSRV remains 1.95.
+
 ## [0.1.0] - 2026-07-02
 
 ### Added

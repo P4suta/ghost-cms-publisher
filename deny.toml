@@ -8,14 +8,15 @@ feature-depth = 1
 [advisories]
 version = 2
 yanked = "deny"
-# All four are *unmaintained* advisories (informational, not vulnerabilities) on
-# transitive dependencies with no safe upgrade available. Revisit when an upstream
-# release drops them.
+# Transitive advisories with no safe upgrade available. The yaml-rust/bincode
+# entries are *unmaintained* notices (informational). RUSTSEC-2023-0071 is a
+# timing sidechannel in RSA private-key ops: we pull `rsa` only as part of
+# jsonwebtoken's `rust_crypto` bundle and sign HS256/HMAC exclusively, so the RSA
+# code path is never exercised. Revisit when upstream releases drop them.
 ignore = [
     "RUSTSEC-2024-0320", # yaml-rust — via comrak → syntect (Markdown rendering)
-    "RUSTSEC-2024-0436", # paste — via rmcp (MCP server macros)
-    "RUSTSEC-2025-0057", # fxhash — via inquire's fuzzy matcher (interactive pick)
     "RUSTSEC-2025-0141", # bincode 1.x — via comrak → syntect (Markdown rendering)
+    "RUSTSEC-2023-0071", # rsa (Marvin) — via jsonwebtoken rust_crypto; RSA unused (HS256 only)
 ]
 
 [licenses]
@@ -37,6 +38,7 @@ allow = [
     "0BSD",
     "Unlicense",
     "CDLA-Permissive-2.0",            # webpki-roots: Mozilla CA bundle data license (permissive)
+    "MITNFA",                         # fmt2io: MIT +no-false-attribs, via comrak (permissive)
 ]
 
 [bans]

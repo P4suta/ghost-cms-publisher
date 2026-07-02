@@ -34,9 +34,7 @@ hex = "0.4"
 # v10 requires selecting a crypto provider; use the pure-Rust backend (keeps
 # cross-compilation simple). We sign HS256 from a raw secret, so `use_pem` is
 # not needed.
-jsonwebtoken = { version = "10", default-features = false, features = [
-    "rust_crypto",
-] }
+jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 sha2 = "0.11"
 
 # --- content ---
