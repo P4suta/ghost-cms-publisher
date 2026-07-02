@@ -1,0 +1,47 @@
+# release-plz configuration (https://release-plz.dev/).
+#
+# Version automation only — NOT crates.io publishing. All four crates are
+# `publish = false`; release-plz bumps the shared workspace version, updates the
+# single root CHANGELOG.md, and (via the representative crate below) cuts one
+# `v{version}` tag, which triggers release.yml to build and attach the binaries.
+
+[workspace]
+release_always = false               # release only when the Release PR is merged
+publish = false                      # never `cargo publish` — binaries ship via GitHub Releases
+dependencies_update = false          # Dependabot owns dependency bumps
+pr_branch_prefix = "release-plz-"
+pr_labels = ["autorelease: pending"] # ci.yml's release-gate requires "release: approved" to merge
+
+# Suppress per-package tags, GitHub releases, and changelogs at the workspace
+# level; the representative crate re-enables the single tag + changelog.
+git_tag_enable = false
+git_release_enable = false        # release.yml owns the GitHub Release
+changelog_path = "./CHANGELOG.md"
+changelog_update = false
+
+# ghost-cms-cli is the single release identity. All crates share
+# [workspace.package].version, so bumping this one bumps the whole workspace; it
+# alone cuts the tag and owns the aggregated changelog.
+[[package]]
+name = "ghost-cms-cli"
+git_tag_enable = true
+git_tag_name = "v{{ version }}"
+changelog_update = true
+changelog_include = ["ghost-cms-core", "ghost-cms-shared", "ghost-cms-mcp"]
+
+[changelog]
+protect_breaking_commits = true
+commit_parsers = [
+    { message = "^feat", group = "Added" },
+    { message = "^fix", group = "Fixed" },
+    { message = "^perf", group = "Changed" },
+    { message = "^refactor", group = "Changed" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^deps", group = "Dependencies" },
+    { message = "^style", skip = true },
+    { message = "^test", skip = true },
+    { message = "^chore", skip = true },
+    { message = "^ci", skip = true },
+    { message = "^build", skip = true },
+    { message = "^revert", group = "Reverted" },
+]

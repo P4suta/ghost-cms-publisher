@@ -1,0 +1,106 @@
+name: release-plz
+
+# Dormant scaffold: with the two RELEASE_PLZ_APP_* secrets unset, every real step
+# is skipped and both jobs finish green (no-op). Configure a GitHub App with
+# contents + pull-requests write, set the secrets, and it activates — the App
+# identity is required so the tag it pushes can trigger release.yml (a tag pushed
+# by the default GITHUB_TOKEN cannot trigger other workflows).
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  release-plz-pr:
+    name: release-plz PR
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'P4suta'
+    permissions:
+      contents: write
+      pull-requests: write
+    environment: release-plz
+    steps:
+      - name: Detect app credentials
+        id: app
+        env:
+          CID: ${{ secrets.RELEASE_PLZ_APP_CLIENT_ID }}
+          KEY: ${{ secrets.RELEASE_PLZ_APP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$CID" ] && [ -n "$KEY" ]; then
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::release-plz is dormant — set RELEASE_PLZ_APP_CLIENT_ID and RELEASE_PLZ_APP_PRIVATE_KEY to activate."
+          fi
+      - name: Mint app token
+        if: steps.app.outputs.have == 'true'
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_PLZ_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLZ_APP_PRIVATE_KEY }}
+      - name: Checkout
+        if: steps.app.outputs.have == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ steps.token.outputs.token }}
+      - name: Install Rust
+        if: steps.app.outputs.have == 'true'
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        with:
+          toolchain: stable
+      - name: release-plz release-pr
+        if: steps.app.outputs.have == 'true'
+        uses: release-plz/action@e8792575c7f2366cf6ff3ccc33ead9ace5b691c7 # v0.5.130
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+
+  release-plz-release:
+    name: release-plz release
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'P4suta'
+    permissions:
+      contents: write
+    environment: release-plz
+    steps:
+      - name: Detect app credentials
+        id: app
+        env:
+          CID: ${{ secrets.RELEASE_PLZ_APP_CLIENT_ID }}
+          KEY: ${{ secrets.RELEASE_PLZ_APP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$CID" ] && [ -n "$KEY" ]; then
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Mint app token
+        if: steps.app.outputs.have == 'true'
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_PLZ_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLZ_APP_PRIVATE_KEY }}
+      - name: Checkout
+        if: steps.app.outputs.have == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ steps.token.outputs.token }}
+      - name: Install Rust
+        if: steps.app.outputs.have == 'true'
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        with:
+          toolchain: stable
+      - name: release-plz release
+        if: steps.app.outputs.have == 'true'
+        uses: release-plz/action@e8792575c7f2366cf6ff3ccc33ead9ace5b691c7 # v0.5.130
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ steps.token.outputs.token }}
