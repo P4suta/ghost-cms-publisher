@@ -1,10 +1,7 @@
-//! Centralized terminal styling: status glyphs, semantic colors, and table chrome.
+//! Terminal styling: status glyphs, semantic colors, and table chrome.
 //!
-//! Every `if_supports_color` decision lives here so commands and views never reach
-//! for owo-colors directly. Color degrades automatically on a non-terminal, under
-//! `NO_COLOR`, and when `--color never` sets the process-wide override (see
-//! [`crate::output::apply_color`]). Callers pass the [`Stream`] the text is bound
-//! for so that, e.g., a piped stdout still leaves a terminal stderr colored.
+//! Every `if_supports_color` decision lives here; callers pass the [`Stream`] the
+//! text is bound for so a piped stdout still leaves a terminal stderr colored.
 
 use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table, presets};
 use ghost_cms_core::domain::PostStatus;

@@ -1,18 +1,13 @@
 //! ghost-core: publish Markdown to a Ghost blog via the Admin API.
 //!
-//! The crate is split into small, independently testable modules:
+//! Modules:
+//! - [`client`] — async Admin API client, generic over [`transport::HttpTransport`].
+//! - [`frontmatter`] / [`markdown`] — parse `blog/posts/*.md` into typed front matter plus GFM HTML.
+//! - [`domain`] — request/response DTOs.
+//! - [`publish`] — idempotent create-or-update orchestration.
 //!
-//! - [`client`] — an async client over the Ghost Admin API, generic over an
-//!   [`transport::HttpTransport`] so it can be unit-tested without a network.
-//! - [`frontmatter`] / [`markdown`] — parse `blog/posts/*.md` into a typed
-//!   front matter plus GFM-rendered HTML.
-//! - [`domain`] — the typed request/response DTOs.
-//! - [`publish`] — the idempotent create-or-update orchestration.
-//!
-//! Token parsing/JWT signing, content hashing, and image uploading are internal
-//! implementation details. Authentication uses a Staff Access Token rather than
-//! a Custom Integration, so it works on Ghost Pro plans where custom
-//! integrations are unavailable.
+//! Auth uses a Staff Access Token (works on Ghost Pro, where custom
+//! integrations are unavailable).
 
 #![allow(
     clippy::redundant_pub_crate,

@@ -27,8 +27,7 @@ fn lines_or(lines: &[String], empty: &str) -> String {
     }
 }
 
-// `vis` makes the generated `tool_router()` reachable from the `#[tool_handler]`
-// impl in server.rs (a different module in this crate).
+// `vis` makes the generated `tool_router()` reachable from server.rs.
 #[tool_router(vis = "pub(crate)")]
 impl GhostServer {
     /// Build a server from a client and blog directory.
@@ -50,7 +49,7 @@ impl GhostServer {
     }
 
     #[tool(
-        description = "Idempotently publish/update a Ghost post from a Markdown file (frontmatter-driven). Looks up by slug; creates or updates with updated_at conflict detection."
+        description = "Publish/update a Ghost post from a Markdown file (frontmatter-driven). Idempotent by slug."
     )]
     async fn ghost_publish_markdown(
         &self,

@@ -1,5 +1,5 @@
-# Dev toolchain, provisioned by `mise install`. The Rust toolchain itself is
-# owned by rust-toolchain.toml; mise manages the auxiliary tools the recipes use.
+# Auxiliary dev tools, provisioned by `mise install`. The Rust toolchain is owned
+# by rust-toolchain.toml.
 
 [tools]
 just = "latest"
@@ -7,7 +7,7 @@ lefthook = "latest"
 typos = "latest"
 taplo = "latest"
 
-# cargo-binstall fetches prebuilt binaries for the cargo: backend tools below.
+# cargo-binstall fetches prebuilt binaries for the cargo: tools below.
 cargo-binstall = "latest"
 "cargo:cargo-nextest" = "latest"
 "cargo:cargo-deny" = "latest"

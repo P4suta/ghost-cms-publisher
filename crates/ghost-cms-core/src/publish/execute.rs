@@ -59,8 +59,7 @@ pub(super) async fn execute<T: HttpTransport>(
 
 /// Record the published state for `slug` in the cache file, if one is set.
 ///
-/// Cache failures are logged but never fail the publish — Ghost is the source
-/// of truth and a stale cache only costs an extra lookup next time.
+/// Cache failures are logged but never fail the publish.
 fn record_state(opts: &PublishOptions, slug: &str, state: PostState) {
     let Some(path) = opts.state_path.as_deref() else {
         return;

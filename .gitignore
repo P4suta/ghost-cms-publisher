@@ -13,5 +13,6 @@ blog/.ghost-cms/
 # insta pending snapshots
 **/*.snap.new
 
-# local Claude Code settings (personal, machine-specific)
+# local Claude Code settings / harness artifacts (personal, machine-specific)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock

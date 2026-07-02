@@ -1,12 +1,8 @@
 # Changelog
 
-All notable changes to ghost-cms-publisher are recorded in this file. The format
-follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
-adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-Releases are cut by [release-plz](https://release-plz.dev/); this file is
-maintained automatically from Conventional Commit messages once the release
-automation is activated.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning
+follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Maintained by
+[release-plz](https://release-plz.dev/) from Conventional Commit messages.
 
 ## [Unreleased]
 

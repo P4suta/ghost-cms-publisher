@@ -8,11 +8,7 @@ feature-depth = 1
 [advisories]
 version = 2
 yanked = "deny"
-# Transitive advisories with no safe upgrade available. The yaml-rust/bincode
-# entries are *unmaintained* notices (informational). RUSTSEC-2023-0071 is a
-# timing sidechannel in RSA private-key ops: we pull `rsa` only as part of
-# jsonwebtoken's `rust_crypto` bundle and sign HS256/HMAC exclusively, so the RSA
-# code path is never exercised. Revisit when upstream releases drop them.
+# Transitive-only advisories; each entry notes why it is safe here.
 ignore = [
     "RUSTSEC-2024-0320", # yaml-rust — via comrak → syntect (Markdown rendering)
     "RUSTSEC-2025-0141", # bincode 1.x — via comrak → syntect (Markdown rendering)
@@ -48,7 +44,7 @@ allow-wildcard-paths = true
 highlight = "all"
 workspace-default-features = "allow"
 external-default-features = "allow"
-# rustls を採用しているので OpenSSL は混入させない。
+# We use rustls; keep OpenSSL out of the tree.
 deny = [{ name = "openssl" }, { name = "openssl-sys" }]
 skip-tree = []
 

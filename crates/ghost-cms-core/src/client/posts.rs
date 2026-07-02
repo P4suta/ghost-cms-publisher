@@ -24,7 +24,7 @@ impl<T: HttpTransport> Posts<'_, T> {
         Ok(())
     }
 
-    /// `GET /posts/?filter=slug:<slug>` — fetch a single post by slug, if any.
+    /// `GET /posts/?filter=slug:<slug>` — the matching post, if any.
     ///
     /// # Errors
     /// Propagates transport and API errors.
@@ -42,7 +42,7 @@ impl<T: HttpTransport> Posts<'_, T> {
         Ok(env.posts.into_iter().next())
     }
 
-    /// `GET /posts/` — list recent posts, newest-updated first.
+    /// `GET /posts/` — newest-updated first.
     ///
     /// # Errors
     /// Propagates transport and API errors.
@@ -60,7 +60,7 @@ impl<T: HttpTransport> Posts<'_, T> {
         Ok(env.posts)
     }
 
-    /// `GET /posts/<id>/` — fetch one post (with HTML) by id.
+    /// `GET /posts/<id>/` — one post, with HTML.
     ///
     /// # Errors
     /// Propagates transport and API errors.
@@ -72,7 +72,7 @@ impl<T: HttpTransport> Posts<'_, T> {
             .await
     }
 
-    /// `POST /posts/?source=html` — create a post.
+    /// `POST /posts/?source=html`
     ///
     /// # Errors
     /// Propagates size, transport and API errors.
@@ -89,7 +89,7 @@ impl<T: HttpTransport> Posts<'_, T> {
             .await
     }
 
-    /// `PUT /posts/<id>/?source=html` — update a post.
+    /// `PUT /posts/<id>/?source=html`
     ///
     /// `updated_at` must be the value last seen from Ghost; a stale value is
     /// rejected with a 409 conflict.
@@ -109,7 +109,7 @@ impl<T: HttpTransport> Posts<'_, T> {
             .await
     }
 
-    /// `DELETE /posts/<id>/` — delete a post (204 No Content on success).
+    /// `DELETE /posts/<id>/` — 204 on success.
     ///
     /// # Errors
     /// Propagates transport and API errors.

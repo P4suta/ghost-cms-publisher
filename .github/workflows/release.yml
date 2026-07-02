@@ -1,7 +1,7 @@
 name: Release
 
-# Triggered by a `v*` tag (from release-plz or a manual push). `workflow_dispatch`
-# runs the build legs as a dry run (the publish job is skipped without a tag).
+# Triggered by a `v*` tag. `workflow_dispatch` runs the build legs only (publish
+# is skipped without a tag).
 
 on:
   push:

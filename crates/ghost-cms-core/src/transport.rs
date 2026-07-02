@@ -1,10 +1,8 @@
 //! HTTP transport abstraction.
 //!
-//! The [`HttpTransport`] trait is the seam between *describing* a Ghost Admin
-//! API request (building, signing, and interpreting the response — all pure
-//! domain logic in [`crate::client`]) and *performing* the I/O. The default
-//! [`ReqwestTransport`] wraps `reqwest`; tests use an in-memory fake so the
-//! client's logic can be exercised without a network.
+//! [`HttpTransport`] separates request construction/signing/interpretation (in
+//! [`crate::client`]) from the I/O. [`ReqwestTransport`] wraps `reqwest`; tests
+//! use an in-memory fake.
 
 use std::future::Future;
 
@@ -79,8 +77,7 @@ pub struct HttpResponse {
 
 /// Sends a fully-described [`HttpRequest`] and returns the raw response.
 ///
-/// Implementations perform only I/O; request construction, signing, and
-/// response interpretation live in [`crate::client`].
+/// Implementations perform only I/O.
 pub trait HttpTransport: Send + Sync {
     /// Execute a request.
     ///
@@ -112,8 +109,7 @@ impl ReqwestTransport {
     }
 }
 
-/// A canned-response transport for unit tests: every request returns the same
-/// status and body.
+/// Test transport that always returns the same status and body.
 #[cfg(test)]
 pub(crate) struct MockTransport {
     status: u16,

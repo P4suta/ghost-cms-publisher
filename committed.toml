@@ -19,6 +19,6 @@ allowed_types = [
     "revert",
 ]
 subject_length = 72
-line_length = 0 # body/trailer lines are not length-checked (URLs, trailers)
-subject_capitalized = false # conventional style: lowercase description after the type
+line_length = 0
+subject_capitalized = false
 no_wip = true

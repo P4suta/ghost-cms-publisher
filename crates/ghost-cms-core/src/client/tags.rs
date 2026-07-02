@@ -11,7 +11,7 @@ pub struct Tags<'a, T: HttpTransport> {
 }
 
 impl<T: HttpTransport> Tags<'_, T> {
-    /// `GET /tags/` — list tags, newest-updated first, with post counts.
+    /// `GET /tags/` — newest-updated first, with post counts.
     ///
     /// # Errors
     /// Propagates transport and API errors.
@@ -30,7 +30,7 @@ impl<T: HttpTransport> Tags<'_, T> {
         Ok(env.tags)
     }
 
-    /// `GET /tags/?filter=slug:<slug>` — fetch a single tag by slug, if any.
+    /// `GET /tags/?filter=slug:<slug>` — the matching tag, if any.
     ///
     /// # Errors
     /// Propagates transport and API errors.
@@ -48,7 +48,7 @@ impl<T: HttpTransport> Tags<'_, T> {
         Ok(env.tags.into_iter().next())
     }
 
-    /// `POST /tags/` — create a tag.
+    /// `POST /tags/`
     ///
     /// # Errors
     /// Propagates transport and API errors.
@@ -63,7 +63,7 @@ impl<T: HttpTransport> Tags<'_, T> {
             .await
     }
 
-    /// `PUT /tags/<id>/` — update a tag (with `updated_at` conflict detection).
+    /// `PUT /tags/<id>/` — with `updated_at` conflict detection.
     ///
     /// # Errors
     /// Propagates transport and API errors (including conflicts).
@@ -78,7 +78,7 @@ impl<T: HttpTransport> Tags<'_, T> {
             .await
     }
 
-    /// `DELETE /tags/<id>/` — delete a tag.
+    /// `DELETE /tags/<id>/`
     ///
     /// # Errors
     /// Propagates transport and API errors.

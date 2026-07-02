@@ -60,9 +60,7 @@ impl StaffToken {
     }
 
     /// Mint a signed Admin API JWT valid for [`JWT_TTL_SECS`] seconds from
-    /// `now_unix` (seconds since the Unix epoch).
-    ///
-    /// `now_unix` is taken as a parameter so callers — and tests — control time.
+    /// `now_unix` (seconds since the Unix epoch; a parameter so tests control time).
     ///
     /// # Errors
     /// Returns [`CoreError::Jwt`] if signing fails.
@@ -79,9 +77,7 @@ impl StaffToken {
     }
 }
 
-/// Current wall-clock time in seconds since the Unix epoch.
-///
-/// Returns `0` if the system clock is set before 1970 (it never is in practice).
+/// Current wall-clock time in seconds since the Unix epoch (`0` if before 1970).
 #[must_use]
 pub(crate) fn current_unix_time() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -122,17 +118,14 @@ mod tests {
         let now = 1_700_000_000u64;
         let jwt = token.sign_jwt(now).unwrap();
 
-        // Header carries the kid.
         let header = jsonwebtoken::decode_header(&jwt).unwrap();
         assert_eq!(header.alg, Algorithm::HS256);
         assert_eq!(header.kid.as_deref(), Some("64abc"));
 
-        // Payload validates against the audience and the 5-minute expiry.
         let mut validation = Validation::new(Algorithm::HS256);
         validation.set_audience(&[ADMIN_AUDIENCE]);
         validation.set_required_spec_claims(&["exp", "aud"]);
-        // The test signs at a fixed past instant, so don't reject on expiry —
-        // the claim values themselves are asserted below.
+        // Signed at a fixed past instant, so don't reject on expiry.
         validation.validate_exp = false;
         let key = DecodingKey::from_secret(&hex::decode(SECRET_HEX).unwrap());
         let data = jsonwebtoken::decode::<serde_json::Value>(&jwt, &key, &validation).unwrap();

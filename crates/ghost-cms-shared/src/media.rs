@@ -1,7 +1,4 @@
-//! File-type helpers shared by the frontends.
-//!
-//! The MIME tables and local-vs-remote detection live in `ghost-cms-core`; this
-//! module re-exports them and adds the frontend-facing [`UploadKind`].
+//! File-type helpers: re-exports core MIME/detection and adds [`UploadKind`].
 
 use std::path::Path;
 

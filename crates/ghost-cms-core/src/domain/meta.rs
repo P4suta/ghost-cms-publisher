@@ -1,8 +1,7 @@
-//! Shared metadata value types, grouped so posts and tags reuse them.
+//! Shared metadata value types reused by posts and tags.
 //!
 //! The SEO/Open Graph/Twitter/code-injection blocks are `#[serde(flatten)]`ed
-//! into the request DTOs, so the wire format stays the flat shape Ghost expects
-//! while the Rust types stay cohesive.
+//! into the DTOs, keeping the flat wire shape Ghost expects.
 
 use serde::{Deserialize, Serialize};
 

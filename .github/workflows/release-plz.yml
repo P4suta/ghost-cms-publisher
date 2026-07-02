@@ -1,10 +1,8 @@
 name: release-plz
 
-# Dormant scaffold: with the two RELEASE_PLZ_APP_* secrets unset, every real step
-# is skipped and both jobs finish green (no-op). Configure a GitHub App with
-# contents + pull-requests write, set the secrets, and it activates — the App
-# identity is required so the tag it pushes can trigger release.yml (a tag pushed
-# by the default GITHUB_TOKEN cannot trigger other workflows).
+# Dormant until the RELEASE_PLZ_APP_* secrets are set; otherwise every step skips.
+# A GitHub App identity is required because a tag pushed by the default
+# GITHUB_TOKEN cannot trigger release.yml.
 
 on:
   push:

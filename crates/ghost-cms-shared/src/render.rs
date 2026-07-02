@@ -1,9 +1,5 @@
-//! Presentation-neutral rendering: one source of truth for the JSON shapes,
-//! detail blocks, table rows, and one-line summaries the frontends display.
-//!
-//! This module deliberately has no color or table dependency — the CLI adds
-//! comfy-table and owo-colors on top of these structures, and the MCP server
-//! renders them as plain text.
+//! Presentation-neutral rendering: JSON shapes, detail blocks, table rows, and
+//! one-line summaries, with no color or table dependency.
 
 use std::path::Path;
 

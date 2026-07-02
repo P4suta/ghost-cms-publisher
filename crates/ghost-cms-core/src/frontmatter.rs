@@ -98,8 +98,7 @@ impl FrontMatter {
 
     /// Validate cross-field invariants.
     ///
-    /// Visibility is validated by deserialization (an unknown value is a parse
-    /// error), so it is no longer checked here.
+    /// Visibility is validated during deserialization (an unknown value is a parse error).
     ///
     /// # Errors
     /// Returns [`CoreError::FrontMatter`] when `title`/`slug` are blank, or a

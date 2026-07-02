@@ -1,5 +1,4 @@
-# taplo: TOML formatter configuration.
-# https://taplo.tamasfe.dev/configuration/file.html
+# taplo config: https://taplo.tamasfe.dev/configuration/file.html
 
 include = ["**/*.toml"]
 exclude = ["target/**", "node_modules/**"]

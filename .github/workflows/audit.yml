@@ -1,8 +1,6 @@
 name: Security audit
 
-# Advisory scanning lives here, off the PR critical path: the RUSTSEC database
-# changes daily, so a fresh advisory must not turn an unrelated PR red. A failure
-# here surfaces on the Actions tab (and emails the maintainer) without blocking.
+# Advisory scanning runs on a schedule, off the PR critical path (see ci.yml).
 
 on:
   schedule:
