@@ -35,7 +35,7 @@ jsonwebtoken = "9"
 sha2 = "0.10"
 
 # --- content ---
-comrak = "0.30"
+comrak = "0.52"
 regex = "1"
 
 # --- serialization / schema ---
