@@ -31,7 +31,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 
 # --- auth / crypto ---
 hex = "0.4"
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 sha2 = "0.10"
 
 # --- content ---
