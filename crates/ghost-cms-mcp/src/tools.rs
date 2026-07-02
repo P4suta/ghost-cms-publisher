@@ -8,7 +8,7 @@ use ghost_cms_shared::media::UploadKind;
 use ghost_cms_shared::tag::{TagMeta, build_upsert};
 use ghost_cms_shared::{paths, render, upload};
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, Content};
+use rmcp::model::{CallToolResult, ContentBlock};
 use rmcp::{ErrorData, tool, tool_router};
 
 use crate::args::{
@@ -27,14 +27,15 @@ fn lines_or(lines: &[String], empty: &str) -> String {
     }
 }
 
-#[tool_router]
+// `vis` makes the generated `tool_router()` reachable from the `#[tool_handler]`
+// impl in server.rs (a different module in this crate).
+#[tool_router(vis = "pub(crate)")]
 impl GhostServer {
     /// Build a server from a client and blog directory.
     pub(crate) fn new(client: ghost_cms_core::Ghost, blog_dir: std::path::PathBuf) -> Self {
         Self {
             client: std::sync::Arc::new(client),
             blog_dir,
-            tool_router: Self::tool_router(),
         }
     }
 
@@ -42,7 +43,7 @@ impl GhostServer {
     async fn ghost_whoami(&self) -> Result<CallToolResult, ErrorData> {
         let site = self.client.site().get().await.mcp()?;
         let version = site.version.as_deref().unwrap_or("unknown");
-        Ok(CallToolResult::success(vec![Content::text(format!(
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "{} ({}) [Ghost {}]",
             site.title, site.url, version
         ))]))
@@ -66,7 +67,7 @@ impl GhostServer {
         let outcome = publish::publish_file(self.client.as_ref(), &file, &opts)
             .await
             .mcp()?;
-        Ok(CallToolResult::success(vec![Content::text(
+        Ok(CallToolResult::success(vec![ContentBlock::text(
             render::outcome_line(&outcome),
         )]))
     }
@@ -96,7 +97,7 @@ impl GhostServer {
         )
         .await
         .mcp()?;
-        Ok(CallToolResult::success(vec![Content::text(
+        Ok(CallToolResult::success(vec![ContentBlock::text(
             render::outcome_line(&outcome),
         )]))
     }
@@ -124,7 +125,7 @@ impl GhostServer {
                 )
             })
             .collect();
-        Ok(CallToolResult::success(vec![Content::text(lines_or(
+        Ok(CallToolResult::success(vec![ContentBlock::text(lines_or(
             &lines,
             "(no posts)",
         ))]))
@@ -138,7 +139,7 @@ impl GhostServer {
         let post = require_post_by_slug(self.client.as_ref(), &args.slug)
             .await
             .mcp()?;
-        Ok(CallToolResult::success(vec![Content::text(
+        Ok(CallToolResult::success(vec![ContentBlock::text(
             render::post_value(&post).to_string(),
         )]))
     }
@@ -152,7 +153,7 @@ impl GhostServer {
         let url = upload::upload(self.client.as_ref(), &path, UploadKind::Image)
             .await
             .mcp()?;
-        Ok(CallToolResult::success(vec![Content::text(url)]))
+        Ok(CallToolResult::success(vec![ContentBlock::text(url)]))
     }
 
     #[tool(
@@ -167,7 +168,7 @@ impl GhostServer {
         let url = upload::upload(self.client.as_ref(), &path, kind)
             .await
             .mcp()?;
-        Ok(CallToolResult::success(vec![Content::text(url)]))
+        Ok(CallToolResult::success(vec![ContentBlock::text(url)]))
     }
 
     #[tool(description = "List tags with post counts.")]
@@ -180,7 +181,7 @@ impl GhostServer {
             .iter()
             .map(|r| format!("{:<24} {} (posts: {})", r.slug, r.name, r.posts))
             .collect();
-        Ok(CallToolResult::success(vec![Content::text(lines_or(
+        Ok(CallToolResult::success(vec![ContentBlock::text(lines_or(
             &lines,
             "(no tags)",
         ))]))
@@ -242,7 +243,7 @@ impl GhostServer {
         } else {
             "created"
         };
-        Ok(CallToolResult::success(vec![Content::text(format!(
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "{verb} tag '{}'",
             tag.slug
         ))]))
