@@ -108,6 +108,13 @@ trivial_numeric_casts = "warn"
 static_mut_refs = "deny"
 missing_docs = "warn"
 
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "warn"
+invalid_rust_codeblocks = "deny"
+bare_urls = "deny"
+unescaped_backticks = "warn"
+
 [profile.release]
 lto = "fat"
 codegen-units = 1

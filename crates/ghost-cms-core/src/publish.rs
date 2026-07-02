@@ -146,7 +146,7 @@ pub async fn publish_file<T: HttpTransport>(
 /// Markdown body.
 ///
 /// The flow is: validate, render GFM to HTML, look the slug up on Ghost, then
-/// decide a [`Plan`] (create / update / skip). A dry run reports the plan
+/// decide a [`PlannedAction`] (create / update / skip). A dry run reports the plan
 /// without uploading images or writing; a real run uploads local images, hashes
 /// the payload, and executes the plan with `updated_at` conflict detection.
 ///
