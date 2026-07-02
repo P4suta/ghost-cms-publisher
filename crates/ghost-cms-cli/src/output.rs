@@ -1,9 +1,7 @@
 //! Terminal presentation: color, tables, and the [`Render`] view abstraction.
 //!
-//! The neutral data (JSON shapes, rows, detail fields, one-line summaries) comes
-//! from `ghost-cms-shared`; this module only adds color and table chrome. Every
-//! command emits a view through [`Ctx::emit`], so the `if json { … } else { … }`
-//! fork lives here once instead of in each command.
+//! Neutral data comes from `ghost-cms-shared`; this module adds color and table
+//! chrome. Commands emit via [`Ctx::emit`], so the json/human fork lives here once.
 
 use std::path::Path;
 

@@ -168,7 +168,6 @@ async fn set(ctx: &Ctx, slug: Option<String>, meta: TagSetArgs) -> miette::Resul
     let slug = crate::pick::tag_slug(ctx, &client, slug).await?;
     let existing = client.tags().find_by_slug(&slug).await.friendly()?;
 
-    // Local images upload against the current directory.
     let base = Path::new(".");
     let mut meta: TagMeta = meta.into();
     meta.feature_image = upload_if_local(&client, base, meta.feature_image)

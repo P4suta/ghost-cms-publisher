@@ -1,9 +1,8 @@
 //! Render shared/core errors as friendly miette diagnostics.
 //!
-//! The classification lives in `ghost-cms-shared`; this module only maps a
-//! [`Diagnosis`](ghost_cms_shared::error::Diagnosis) into a miette report
-//! (summary + remediation hint), plus the
-//! CLI-only source-span highlighting for front-matter syntax errors.
+//! Classification lives in `ghost-cms-shared`; this module maps a
+//! [`Diagnosis`](ghost_cms_shared::error::Diagnosis) into a miette report, plus
+//! source-span highlighting for front-matter syntax errors.
 
 use std::path::Path;
 

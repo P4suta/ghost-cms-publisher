@@ -1,10 +1,5 @@
-//! A unified frontend error type and its diagnosis.
-//!
-//! Both frontends share one [`Error`] type and one [`diagnose`] mapping, so a
-//! 401 / 404 / 409 / oversized-payload / bad-frontmatter failure produces the
-//! same summary and the same remediation category everywhere. Each frontend
-//! then renders that category in its own idiom (miette help text, MCP error
-//! codes).
+//! A unified frontend [`Error`] type and its [`diagnose`] mapping, shared so
+//! both frontends produce the same summary and remediation category.
 
 use ghost_cms_core::domain::{Post, Tag};
 use ghost_cms_core::error::ApiError;
@@ -14,11 +9,10 @@ use ghost_cms_core::{CoreError, Ghost};
 use crate::config::ConfigError;
 use crate::text::nearest as nearest_slug;
 
-/// How many existing slugs to scan when suggesting a "did you mean" alternative.
+/// Existing slugs to scan for a "did you mean" suggestion.
 const SUGGEST_LIMIT: u32 = 100;
 
-/// A frontend-level error: a core failure, a config problem, or an I/O or
-/// lookup failure that happens above the core library.
+/// A frontend-level error: a core failure, config problem, or I/O/lookup failure.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
@@ -129,8 +123,8 @@ pub struct Diagnosis {
     pub summary: String,
     /// The suggested next step.
     pub remediation: Remediation,
-    /// Whether this is the caller's fault (bad input/config) rather than an
-    /// internal failure — used by MCP to pick `invalid_params` vs `internal`.
+    /// Caller's fault (bad input/config) vs internal; MCP picks
+    /// `invalid_params` vs `internal`.
     pub user_error: bool,
 }
 
@@ -165,8 +159,7 @@ pub fn diagnose(error: &Error) -> Diagnosis {
     }
 }
 
-/// The one-line summary for an error, enriched with a "did you mean" hint when a
-/// near-miss slug was found.
+/// One-line summary, with a "did you mean" hint on a near-miss slug.
 fn summarize(error: &Error) -> String {
     match error {
         Error::NotFound {

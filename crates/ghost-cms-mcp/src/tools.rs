@@ -27,8 +27,7 @@ fn lines_or(lines: &[String], empty: &str) -> String {
     }
 }
 
-// `vis` makes the generated `tool_router()` reachable from the `#[tool_handler]`
-// impl in server.rs (a different module in this crate).
+// `vis` makes the generated `tool_router()` reachable from server.rs.
 #[tool_router(vis = "pub(crate)")]
 impl GhostServer {
     /// Build a server from a client and blog directory.

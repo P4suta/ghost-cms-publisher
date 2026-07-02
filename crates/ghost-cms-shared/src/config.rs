@@ -1,8 +1,5 @@
-//! Layered configuration resolution: flag > env var > config file > default.
-//!
-//! The Staff Access Token is only ever read from a flag or an environment
-//! variable, never written to or read from the on-disk config file. Resolution
-//! records the provenance of each value so `doctor` can show where it came from.
+//! Layered configuration resolution (flag > env > file > default) with
+//! provenance. The token is only read from a flag or env, never the file.
 
 use std::path::{Path, PathBuf};
 
@@ -57,7 +54,7 @@ impl std::fmt::Display for Source {
     }
 }
 
-/// Non-secret settings persisted in `ghost-cms.toml`. The token is never stored.
+/// Non-secret settings persisted in `ghost-cms.toml`.
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct FileConfig {
     /// Ghost site origin.

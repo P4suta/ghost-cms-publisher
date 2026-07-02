@@ -8,8 +8,8 @@ use crate::error::{Error, Result};
 
 /// Optional tag metadata gathered by a frontend.
 ///
-/// Image fields are expected to already be resolved to URLs (the caller runs
-/// [`crate::upload::upload_if_local`] first).
+/// Image fields must already be resolved to URLs (via
+/// [`crate::upload::upload_if_local`]).
 #[derive(Debug, Default)]
 pub struct TagMeta {
     /// Display name (falls back to the existing name, then the slug).
@@ -48,8 +48,7 @@ pub struct TagMeta {
 
 /// Assemble a [`TagUpsertInput`] for `slug` from `meta`.
 ///
-/// The name falls back to `existing_name`, then the slug; the visibility string
-/// is parsed into a [`TagVisibility`].
+/// The name falls back to `existing_name`, then the slug.
 ///
 /// # Errors
 /// Returns [`Error::InvalidValue`] if `visibility` is not `public`/`internal`.

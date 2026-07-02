@@ -4,7 +4,7 @@
 //! `println!`); all logging goes to stderr.
 #![allow(
     clippy::redundant_pub_crate,
-    reason = "binary crate: pub(crate) is the honest visibility, and this nursery lint conflicts with rustc's unreachable_pub"
+    reason = "binary crate: pub(crate) is honest here and this nursery lint conflicts with unreachable_pub"
 )]
 
 mod args;
@@ -21,7 +21,6 @@ use crate::server::GhostServer;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // stdout is reserved for JSON-RPC; logs go to stderr only.
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(
@@ -30,8 +29,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    // Resolve config the same way the CLI does (env + ghost-cms.toml), so the
-    // MCP server honors the same precedence and the blog directory.
+    // Resolve config like the CLI (env + ghost-cms.toml) for the same precedence.
     let resolved = config::resolve(config::Overrides::default());
     let cfg = resolved.to_config()?;
     let client = Ghost::new(&cfg)?;

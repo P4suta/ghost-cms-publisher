@@ -79,8 +79,7 @@ impl Ctx {
     }
 }
 
-/// Print a red failure line to stderr. Independent of [`Ctx`] and never
-/// suppressed: a failure is an error, not decoration, so `--quiet` keeps it.
+/// Print a red failure line to stderr. Never suppressed by `--quiet`.
 pub(crate) fn fail(msg: &str) {
     eprintln!("{} {msg}", ui::error(Stream::Stderr, ui::ERROR));
 }

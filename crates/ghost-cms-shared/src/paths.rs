@@ -1,8 +1,5 @@
-//! Path conventions shared by the frontends.
-//!
-//! There is one state-cache convention (`<blog_dir>/.ghost-cms/state.json`) and
-//! one relative-path rule (resolve against the blog directory), used by both the
-//! CLI and the MCP server.
+//! Path conventions: state cache (`<blog_dir>/.ghost-cms/state.json`) and
+//! relative-path resolution against the blog directory.
 
 use std::path::{Path, PathBuf};
 

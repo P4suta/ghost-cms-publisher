@@ -2,10 +2,9 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Derive a URL-friendly slug from a title (ASCII kebab-case).
+/// Derive an ASCII kebab-case slug from a title.
 ///
-/// Falls back to `post-<unix_seconds>` when the title has no ASCII
-/// alphanumerics (e.g. a purely non-Latin title) — the user can edit it after.
+/// Falls back to `post-<unix_seconds>` when the title has no ASCII alphanumerics.
 #[must_use]
 pub fn slugify(title: &str) -> String {
     let mut out = String::new();
@@ -54,10 +53,9 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
     prev[b.len()]
 }
 
-/// The candidate closest to `target` by edit distance, if any is close.
+/// The candidate closest to `target` by edit distance.
 ///
-/// Returns `None` when nothing is within a typo-sized threshold, so callers only
-/// ever suggest a genuinely similar alternative.
+/// Returns `None` when nothing is within a typo-sized threshold.
 #[must_use]
 pub fn nearest<'a, I>(candidates: I, target: &str) -> Option<String>
 where

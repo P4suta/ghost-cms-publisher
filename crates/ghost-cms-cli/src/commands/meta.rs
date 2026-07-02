@@ -1,7 +1,7 @@
 //! `completions` / `man` — generate shell completions and man pages.
 //!
-//! These are handled directly in `main` (before any config is resolved) because
-//! they need the `clap::CommandFactory` rather than a [`crate::ctx::Ctx`].
+//! Handled in `main` before config is resolved: they need `clap::CommandFactory`,
+//! not a [`crate::ctx::Ctx`].
 
 use std::path::{Path, PathBuf};
 

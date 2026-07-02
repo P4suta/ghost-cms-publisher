@@ -1,7 +1,7 @@
-//! Ghost Admin API protocol constants, gathered in one place.
+//! Ghost Admin API protocol constants.
 //!
-//! These encode fixed facts about the Ghost Admin API and the plan limits we
-//! target, rather than user-tunable settings (which live in [`crate::config`]).
+//! Fixed protocol facts and plan limits, not user-tunable settings (those live
+//! in [`crate::config`]).
 
 /// Relative path of the Admin API under a site origin.
 pub(crate) const ADMIN_API_PATH: &str = "/ghost/api/admin/";

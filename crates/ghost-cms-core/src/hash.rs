@@ -1,8 +1,7 @@
 //! Content hashing and the local publish-state cache.
 //!
-//! The cache is a pure optimization: it lets `publish` skip a re-upload when a
-//! post's content is byte-for-byte unchanged. Ghost remains the source of
-//! truth — a missing or corrupt cache only costs an extra `find_by_slug`.
+//! The cache only lets `publish` skip re-uploading unchanged content; Ghost is
+//! the source of truth, so a missing or corrupt cache just costs a `find_by_slug`.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -42,11 +41,7 @@ pub(crate) struct StateCache {
 }
 
 impl StateCache {
-    /// Load the cache from `path`.
-    ///
-    /// A missing file yields an empty cache (`Ok(default)`); a present but
-    /// unreadable or corrupt file is an error, letting the caller decide
-    /// whether to warn and continue (the cache is only an optimization).
+    /// Load the cache from `path`; a missing file yields an empty cache.
     ///
     /// # Errors
     /// Returns an error if the file exists but cannot be read or parsed.

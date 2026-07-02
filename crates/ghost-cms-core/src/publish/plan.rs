@@ -36,8 +36,7 @@ impl Plan {
 
 /// Decide what to do from the current Ghost state and cached hash.
 ///
-/// This is pure: all I/O (the slug lookup and the cache read) happens in the
-/// caller, so the create/update/skip decision lives in one testable place.
+/// Pure: all I/O happens in the caller, keeping the decision testable.
 ///
 /// # Errors
 /// Returns [`CoreError::Inconsistent`] if an existing post lacks the
@@ -67,7 +66,7 @@ pub(super) fn decide(
 
 /// Load the cached content hash for `slug`, if a cache is configured.
 ///
-/// A corrupt cache is logged and treated as empty — it is only an optimization.
+/// A corrupt cache is logged and treated as empty.
 pub(super) fn load_cached_hash(opts: &PublishOptions, slug: &str) -> Option<String> {
     let path = opts.state_path.as_deref()?;
     let cache = StateCache::load(path).unwrap_or_else(|e| {

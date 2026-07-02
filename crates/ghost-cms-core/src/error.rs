@@ -1,9 +1,8 @@
 //! Error types shared across the crate.
 //!
-//! Ghost Admin API failures are modeled as a [`CoreError::Api`] that pairs the
-//! *what* (a [`Resource`] and an [`Operation`]) with a *why* (an [`ApiError`]
-//! category derived from the HTTP status). This single classification is the one
-//! source of truth both the CLI and the MCP server use to render good messages.
+//! Ghost Admin API failures are a [`CoreError::Api`] pairing the *what*
+//! ([`Resource`] + [`Operation`]) with a *why* (an [`ApiError`] category derived
+//! from the HTTP status), so CLI and MCP classify statuses identically.
 
 use thiserror::Error;
 
@@ -206,8 +205,7 @@ pub enum CoreError {
 impl CoreError {
     /// Build a categorized [`CoreError::Api`] from a failing response body.
     ///
-    /// This is the single place HTTP statuses are classified into [`ApiError`]
-    /// categories, so every frontend renders consistent diagnostics.
+    /// The single place HTTP statuses are classified into [`ApiError`].
     #[must_use]
     pub(crate) fn api(resource: Resource, operation: Operation, status: u16, bytes: &[u8]) -> Self {
         let (message, ghost_type) = parse_ghost_error(bytes);
@@ -233,8 +231,7 @@ impl CoreError {
         }
     }
 
-    /// Build an "empty response" [`CoreError::Api`] for a request that returned
-    /// no resource where one was expected.
+    /// Build an "empty response" [`CoreError::Api`] when a resource was expected but absent.
     #[must_use]
     pub(crate) const fn empty(resource: Resource, operation: Operation) -> Self {
         Self::Api {

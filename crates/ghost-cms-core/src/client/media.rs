@@ -41,7 +41,7 @@ impl<T: HttpTransport> Media<'_, T> {
             .ok_or_else(|| CoreError::empty(resource, Operation::Upload))
     }
 
-    /// `POST /images/upload/` — upload an image and return its CDN URL.
+    /// `POST /images/upload/` — returns the CDN URL.
     ///
     /// # Errors
     /// Propagates size, transport and API errors.
@@ -61,7 +61,7 @@ impl<T: HttpTransport> Media<'_, T> {
         .await
     }
 
-    /// `POST /media/upload/` — upload audio/video and return its CDN URL.
+    /// `POST /media/upload/` — audio/video; returns the CDN URL.
     ///
     /// # Errors
     /// Propagates size, transport and API errors.
@@ -81,7 +81,7 @@ impl<T: HttpTransport> Media<'_, T> {
         .await
     }
 
-    /// `POST /files/upload/` — upload an arbitrary file and return its CDN URL.
+    /// `POST /files/upload/` — arbitrary file; returns the CDN URL.
     ///
     /// # Errors
     /// Propagates size, transport and API errors.

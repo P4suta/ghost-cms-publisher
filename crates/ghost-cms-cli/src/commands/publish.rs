@@ -78,7 +78,7 @@ impl Command for PublishArgs {
                 .await?;
             outcomes.push(outcome);
         }
-        // A batch deserves a closing tally; a single file already says it all.
+        // Tally only for a batch; a single file already reported itself.
         if total > 1 && !ctx.json {
             print_publish_summary(ctx, summarize(&outcomes));
         }

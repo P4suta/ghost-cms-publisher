@@ -1,9 +1,7 @@
 //! Resolve an optional slug argument, falling back to an interactive fuzzy picker.
 //!
-//! Slug-taking commands accept `Option<String>`: when the slug is omitted and the
-//! session is interactive, we fetch the candidates and let the user fuzzy-pick one
-//! ([`inquire::Select`] filters as you type). In non-interactive or `--json` runs
-//! we instead return a friendly "slug required" error so scripts fail predictably.
+//! When the slug is omitted and the session is interactive, fetch candidates and
+//! fuzzy-pick; otherwise return a "slug required" error so scripts fail predictably.
 
 use std::io::IsTerminal;
 

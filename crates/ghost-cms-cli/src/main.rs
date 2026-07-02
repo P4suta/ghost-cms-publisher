@@ -1,7 +1,6 @@
-//! ghost-cms: a thoroughly ergonomic CLI for publishing Markdown to Ghost.
+//! ghost-cms: a CLI for publishing Markdown to Ghost.
 //!
-//! This binary is a user-facing CLI, so writing to stdout is the whole point —
-//! the print lints are relaxed here (but kept strict in the libraries).
+//! User-facing binary, so the print lints are relaxed here (strict in libraries).
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -9,7 +8,7 @@
 )]
 #![allow(
     clippy::redundant_pub_crate,
-    reason = "binary crate: pub(crate) is the honest visibility, and this nursery lint directly conflicts with rustc's unreachable_pub"
+    reason = "binary crate: pub(crate) is honest here and this nursery lint conflicts with unreachable_pub"
 )]
 
 mod cli;

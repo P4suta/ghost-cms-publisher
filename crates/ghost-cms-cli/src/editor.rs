@@ -1,4 +1,4 @@
-//! Launching the user's `$EDITOR` — the one genuinely CLI-only file helper.
+//! Launching the user's `$EDITOR`.
 
 use std::path::Path;
 
