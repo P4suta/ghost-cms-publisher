@@ -1,0 +1,24 @@
+# Conventional Commits lint (https://github.com/crate-ci/committed).
+#
+# Enforced two ways: the `commitlint` CI job runs `committed` over each non-merge
+# commit in a PR, and the local `commit-msg` lefthook hook runs it on the message
+# you are about to write. Keep the two in lockstep.
+style = "conventional"
+allowed_types = [
+    "feat",
+    "fix",
+    "perf",
+    "docs",
+    "refactor",
+    "test",
+    "chore",
+    "ci",
+    "build",
+    "deps",
+    "style",
+    "revert",
+]
+subject_length = 72
+line_length = 0 # body/trailer lines are not length-checked (URLs, trailers)
+subject_capitalized = false # conventional style: lowercase description after the type
+no_wip = true

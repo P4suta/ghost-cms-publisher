@@ -13,6 +13,7 @@ cargo-binstall = "latest"
 "cargo:cargo-deny" = "latest"
 "cargo:cargo-machete" = "latest"
 "cargo:cargo-sort" = "latest"
+"cargo:committed" = "latest"
 
 [settings.cargo]
 binstall = true

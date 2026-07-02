@@ -1,0 +1,6 @@
+# Normalize line endings to LF in the repository for deterministic checkouts
+# across Linux/macOS/Windows CI runners.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

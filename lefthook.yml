@@ -27,6 +27,11 @@ pre-commit:
       glob: "*.rs"
       run: cargo clippy --workspace --all-targets -- -D warnings
 
+commit-msg:
+  commands:
+    committed:
+      run: committed --commit-file {1}
+
 pre-push:
   piped: true
   commands:
