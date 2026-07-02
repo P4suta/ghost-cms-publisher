@@ -1,5 +1,10 @@
 # ghost-cms-publisher
 
+[![CI](https://github.com/P4suta/ghost-cms-publisher/actions/workflows/ci.yml/badge.svg)](https://github.com/P4suta/ghost-cms-publisher/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/P4suta/ghost-cms-publisher/actions/workflows/codeql.yml/badge.svg)](https://github.com/P4suta/ghost-cms-publisher/actions/workflows/codeql.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![MSRV](https://img.shields.io/badge/rust-1.95%2B-orange.svg)](rust-toolchain.toml)
+
 Publish Markdown to a [Ghost](https://ghost.org/) blog from your terminal — or
 from an AI assistant over the [Model Context Protocol](https://modelcontextprotocol.io/).
 
@@ -29,12 +34,29 @@ Token**. It is equivalent to your account; treat it like a password.
 
 ## Install
 
+### Download a prebuilt binary
+
+Each [release](https://github.com/P4suta/ghost-cms-publisher/releases) ships an
+archive per platform:
+
+| Platform            | Archive                                                        |
+| ------------------- | ------------------------------------------------------------- |
+| Linux (x86-64)      | `ghost-cms-publisher-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`  |
+| macOS (Apple Silicon) | `ghost-cms-publisher-vX.Y.Z-aarch64-apple-darwin.tar.gz`    |
+| Windows (x86-64)    | `ghost-cms-publisher-vX.Y.Z-x86_64-pc-windows-msvc.zip`       |
+
+Each archive contains both binaries (`ghost-cms` and `ghost-cms-mcp`), shell
+completions, and man pages. Verify the download against `SHA256SUMS` (attached to
+the release), then extract and put the binaries on your `PATH`.
+
+### Build from source
+
+Requires a recent stable Rust toolchain (see `rust-toolchain.toml`; MSRV 1.95).
+
 ```sh
 cargo install --path crates/ghost-cms-cli   # installs `ghost-cms`
 cargo install --path crates/ghost-cms-mcp   # installs `ghost-cms-mcp`
 ```
-
-Requires a recent stable Rust toolchain (see `rust-toolchain.toml`).
 
 ## Configure
 
