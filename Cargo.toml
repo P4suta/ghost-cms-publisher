@@ -36,7 +36,7 @@ jsonwebtoken = { version = "10", default-features = false, features = ["rust_cry
 sha2 = "0.11"
 
 # --- content ---
-comrak = "0.52"
+comrak = "0.53"
 regex = "1"
 
 # --- serialization / schema ---
