@@ -3,10 +3,15 @@ source: crates/ghost-cms-cli/tests/cli.rs
 expression: stdout(&out)
 ---
 {
+  "feature_image": null,
+  "feature_image_alt": null,
+  "feature_image_caption": null,
   "html": null,
   "id": "p1",
+  "published_at": null,
   "slug": "hello",
   "status": "published",
+  "tags": [],
   "title": "Hello World",
   "updated_at": "2026-06-26T00:00:00.000Z",
   "url": "https://example.ghost.io/p/hello/"

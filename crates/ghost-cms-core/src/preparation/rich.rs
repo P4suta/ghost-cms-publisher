@@ -27,7 +27,7 @@ pub(super) fn inventory(html: &str) -> Result<RenderReport> {
         })
     };
     let document = Html::parse_fragment(html);
-    let caption = select("figcaption")?;
+    let caption = select("figcaption, .kg-audio-title")?;
     let mut report = RenderReport::default();
     for figure in document.select(&select(
         "figure.kg-image-card, figure.kg-native-video, figure.kg-native-audio",
@@ -110,17 +110,24 @@ fn media_figure<'a>(
 ) -> Result<String> {
     let label = escape(&comrak::html::collect_text(node));
     let fallback = render_node(node, options)?;
-    let tag = match kind {
-        MediaKind::Video => "video",
-        MediaKind::Audio => "audio",
-    };
-    let poster = poster
-        .map(|url| format!(" poster=\"{}\"", escape(url)))
-        .unwrap_or_default();
-    Ok(format!(
-        "<figure class=\"kg-card kg-embed-card kg-native-{tag}\"><{tag} controls preload=\"metadata\" src=\"{}\"{poster} aria-label=\"{label}\">{fallback}</{tag}><figcaption>{label}</figcaption></figure>\n",
-        escape(url)
-    ))
+    Ok(match kind {
+        MediaKind::Video => {
+            let thumbnail = poster
+                .map(|url| format!(" data-kg-thumbnail=\"{}\"", escape(url)))
+                .unwrap_or_default();
+            let poster = poster
+                .map(|url| format!(" poster=\"{}\"", escape(url)))
+                .unwrap_or_default();
+            format!(
+                "<figure class=\"kg-card kg-video-card kg-native-video\"{thumbnail}><div class=\"kg-video-container\"><video controls preload=\"metadata\" src=\"{}\"{poster} aria-label=\"{label}\">{fallback}</video></div><figcaption>{label}</figcaption></figure>\n",
+                escape(url)
+            )
+        },
+        MediaKind::Audio => format!(
+            "<figure class=\"kg-native-audio\"><div class=\"kg-card kg-audio-card\"><div class=\"kg-audio-player-container\"><audio controls preload=\"metadata\" src=\"{}\" aria-label=\"{label}\">{fallback}</audio></div><div class=\"kg-audio-title\">{label}</div></div></figure>\n",
+            escape(url)
+        ),
+    })
 }
 
 fn flush(paragraph: &mut String, html: &mut String) {
@@ -340,7 +347,10 @@ pub(super) fn render<'a>(
         if bookmark_poster(paragraph) {
             continue;
         }
-        if let Some(link) = single_child(paragraph)
+        if paragraph
+            .parent()
+            .is_some_and(|parent| matches!(parent.data().value, NodeValue::Document))
+            && let Some(link) = single_child(paragraph)
             && let Some(html) = bookmark(paragraph, link, None)
         {
             set_html(paragraph, html);

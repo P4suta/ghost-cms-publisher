@@ -32,6 +32,8 @@ status: draft
 language: zh-Hans
 tags: [Aomori, Travel]
 feature_image: ../assets/aomori.jpg
+feature_image_alt: "The white museum building and its green courtyard"
+feature_image_caption: "Aomori Museum of Art and its courtyard."
 excerpt: "Art, archaeology, and a walk through Aomori."
 ---
 
@@ -48,6 +50,9 @@ Use unique English slugs with lowercase ASCII letters, digits, and single intern
 A slug must contain a letter and fit within 64 bytes.
 Titles and bodies can use any language.
 The optional `language` field sets the preview's HTML language.
+`feature_image_alt` supplies the accessible cover description and `feature_image_caption` preserves its caption and attribution.
+Both appear in the local preview and affect the publication identity when edited.
+Omit `tags` or use `tags: []` when creating posts without tags.
 Publication states are `draft`, `published`, and `scheduled`.
 Scheduled posts require an RFC 3339 `published_at` value.
 
@@ -108,7 +113,9 @@ Native Markdown is the default.
 Use `--allow-raw-html` for intentional HTML such as remote embeds.
 Raw HTML resources must use absolute URLs; local resources and `srcset` need native Markdown or explicit preparation.
 Ghost card delimiter comments are reserved for the publisher.
-Prepared content becomes a Ghost HTML card to preserve heading identifiers, code, and tables.
+Ghost converts prepared HTML into its editable paragraphs, headings, lists, and cards through the [HTML import endpoint](https://docs.ghost.org/admin-api/posts/creating-a-post#source-html).
+The publisher does not wrap the complete article in an HTML card.
+The saved editor document is included in collection readback checks.
 Edit the original Markdown and republish it to change the body.
 
 `ghost-cms new "My trip" --slug my-japan-trip --tag Travel` scaffolds a draft and opens the editor.
@@ -141,6 +148,19 @@ Redirects are refused to keep authenticated requests at the configured destinati
 The repository's remote `just` recipes use the optional 1Password CLI flow in `.env.op`.
 Direct CLI commands also work with environment variables or another secret manager.
 
+For a local `.env`, put `GHOST_ADMIN_API_URL` and `GHOST_STAFF_TOKEN` in the ignored file and restrict its permissions.
+The CLI does not load `.env` automatically.
+Build without credentials, then let Just supply the environment only to the finished binary.
+
+```sh
+chmod 600 .env
+mise x -- cargo build --locked -p ghost-cms-cli
+mise x -- just --dotenv-path .env --command target/debug/ghost-cms whoami
+```
+
+Ghost(Pro) commonly uses an Admin API domain such as `https://example.ghost.io` even when the public site uses a custom domain.
+Use that canonical Admin API domain to avoid authenticated redirects.
+
 `--dry-run` validates locally and then reads Ghost to show the proposed action.
 It requires credentials and never writes posts, uploads media, or creates state.
 Use `check` for a completely offline inspection.
@@ -164,6 +184,49 @@ An operating-system lock refuses simultaneous writes to the same state file.
 Corrupt or unsupported state produces an error without replacing the file.
 Legacy unscoped receipts remain preserved but cannot authorize an unchanged skip.
 An absent receipt causes the normal slug-based create-or-update decision.
+
+## Schedule a collection
+
+Prepare drafts on the expected public site, inspect them in the production theme, then freeze and register a release plan.
+The draft command refuses existing post and static-page slugs that are not owned by its receipts.
+It validates the whole collection before its first remote write.
+Schedule commands use native Markdown and the default `/{slug}/` article route.
+Repeat `drafts` with the same receipt to upload local corrections before creating the release plan.
+Collection membership stays fixed, and remote edits still require review.
+An interrupted correction can resume through its newer publication-cache revision.
+
+```sh
+ghost-cms schedule drafts blog/posts/ --site-url https://example.com/ --receipt private/drafts.json --require-feature-images
+ghost-cms schedule plan --drafts private/drafts.json --order release-order.json --output private/release.json
+ghost-cms schedule apply --plan private/release.json
+ghost-cms schedule verify --plan private/release.json
+```
+
+The order file is a JSON array of slug groups.
+Every draft must appear exactly once.
+Posts in the same group share a time.
+
+```json
+[["first-trip"], ["coastal-route", "coastal-museum"], ["travel-index"]]
+```
+
+The first slot is a whole UTC hour at least thirty minutes after plan creation starts.
+Later groups follow at ten-minute intervals, including overnight.
+UTC whole hours also fall on whole hours in Japan Standard Time.
+The plan assigns new publication dates and adds no republication notice to the body.
+Scheduling uses [Ghost's publication API](https://docs.ghost.org/admin-api/posts/scheduling-a-post).
+No newsletter is selected, so the API [does not send email](https://docs.ghost.org/admin-api/posts/sending-a-post).
+
+Keep the receipt, its adjacent publication cache, the release plan, and the source collection together.
+These files record paths and post identities and should stay outside version control.
+Repeat `apply` after an interruption.
+It reconciles pending writes, retains scheduled or published entries, and moves expired unfinished entries to future slots after existing registrations.
+Source edits, changed remote content, mismatched times, and lost identities stop registration.
+Restaging drafts does not change a release plan that already exists.
+Use `--json` on any schedule command for structured output.
+
+The optional `--require-feature-images` check requires a cover, accessible description, and caption on every collection member.
+Ordinary publication continues to support posts without covers.
 
 ## Other commands and MCP
 

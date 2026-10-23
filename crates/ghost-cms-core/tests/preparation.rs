@@ -149,12 +149,30 @@ fn media_labels_become_escaped_captions_and_video_posters_stay_paired()
     assert!(html.contains("<audio controls"));
     assert!(html.contains(" poster=\"https://ghost-cms.invalid/assets/"));
     assert_eq!(html.matches("<img ").count(), 1);
-    assert_eq!(html.matches("<figcaption>").count(), 3);
+    assert_eq!(html.matches("<figcaption>").count(), 2);
+    assert!(html.contains("kg-video-card") && html.contains("kg-audio-card"));
     assert!(html.contains("Before") && html.contains("after."));
     assert!(html.contains("![](literal.jpg)"));
     let report = collection.report();
     assert_eq!(report.posts[0].rendering.media_captions, 3);
     assert_eq!(report.posts[0].rendering.uncaptioned_media, 0);
+    Ok(())
+}
+
+#[test]
+fn links_inside_lists_remain_links_in_their_original_order()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let file = temp.path().join("list.md");
+    std::fs::write(
+        &file,
+        "---\ntitle: Routes\nslug: routes\n---\n\n- [First museum](https://example.com/first)\n- [Second museum](https://example.com/second)\n",
+    )?;
+    let collection = prepare_collection(&[file], PrepareOptions::default())?;
+    let html = collection.posts()[0].rendered_html();
+    assert!(!html.contains("kg-bookmark-card"));
+    assert!(html.contains("<li><a href=\"https://example.com/first\">First museum</a></li>"));
+    assert!(html.find("First museum") < html.find("Second museum"));
     Ok(())
 }
 

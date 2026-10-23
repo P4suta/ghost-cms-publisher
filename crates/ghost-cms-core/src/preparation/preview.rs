@@ -143,8 +143,13 @@ fn preview_post(
         .map(|value| {
             let value = post.rewrites.get(value).map_or(value, String::as_str);
             format!(
-                "<img class=\"feature\" src=\"{}\" alt=\"\">",
-                escape(&replace_asset(value, assets))
+                "<figure><img class=\"feature\" src=\"{}\" alt=\"{}\">{}</figure>",
+                escape(&replace_asset(value, assets)),
+                escape(post.front.feature_image_alt.as_deref().unwrap_or_default()),
+                post.front.feature_image_caption.as_deref().map_or_else(
+                    String::new,
+                    |caption| format!("<figcaption>{}</figcaption>", escape(caption))
+                )
             )
         })
         .unwrap_or_default();

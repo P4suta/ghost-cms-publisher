@@ -10,8 +10,12 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand};
+use ghost_cms_core::domain::{PostInput, PostStatus};
 use ghost_cms_core::preparation::{PrepareOptions, PreparedCollection};
 use ghost_cms_core::publish::publish_prepared;
+use ghost_cms_core::schedule::{
+    apply_release_plan, create_release_plan, stage_drafts, verify_release_plan,
+};
 use ghost_cms_core::{Config, Ghost, PublishOptions, PublishOutcome};
 use percent_encoding::percent_decode_str;
 use scraper::{Html, Selector};
@@ -22,10 +26,11 @@ const READY_ATTEMPTS: u16 = 120;
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 const PROGRESS_INTERVAL: usize = 10;
+const TRANSITION_DELAY_SECONDS: u64 = 5;
+const TRANSITION_ATTEMPTS: u16 = 480;
 const REHEARSAL_DEADLINE: Duration = Duration::from_mins(15);
 const LOOPBACK_HOST: &str = "127.0.0.1";
 const CONTAINER_HOST: &str = "0.0.0.0";
-const CONTAINER_PORT: u16 = 2368;
 const SQLITE_FILE: &str = "/var/lib/ghost/content/data/ghost.db";
 
 #[expect(
@@ -54,6 +59,9 @@ enum Action {
         /// Loopback port acquired atomically by Docker.
         #[arg(long, default_value_t = 24689)]
         port: u16,
+        /// Rehearse staged release plans and one real scheduled-to-published transition.
+        #[arg(long)]
+        include_scheduling: bool,
     },
 }
 
@@ -221,7 +229,20 @@ fn content(html: &str) -> Result<Content> {
         |s| Selector::parse(s).map_err(|e| anyhow::anyhow!("invalid verification selector: {e}"));
     let text = document
         .root_element()
-        .text()
+        .descendants()
+        .filter(|node| {
+            !node
+                .ancestors()
+                .filter_map(scraper::ElementRef::wrap)
+                .any(|element| {
+                    element
+                        .value()
+                        .classes()
+                        .any(|class| matches!(class, "kg-video-card" | "kg-audio-card"))
+                })
+        })
+        .filter_map(|node| node.value().as_text())
+        .map(|text| text.as_ref())
         .flat_map(str::chars)
         .filter(|c| !c.is_whitespace())
         .collect::<String>();
@@ -243,11 +264,19 @@ fn content(html: &str) -> Result<Content> {
             })
             .collect(),
         posters: document
-            .select(&selector("video[poster]")?)
-            .filter_map(|e| e.attr("poster").map(str::to_owned))
+            .select(&selector("figure.kg-video-card[data-kg-thumbnail]")?)
+            .filter_map(|e| {
+                e.attr("data-kg-thumbnail")
+                    .filter(|value| {
+                        value.starts_with('/')
+                            || reqwest::Url::parse(value)
+                                .is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
+                    })
+                    .map(str::to_owned)
+            })
             .collect(),
         captions: document
-            .select(&selector("figcaption")?)
+            .select(&selector("figcaption, .kg-audio-title")?)
             .map(|e| e.text().collect())
             .collect(),
         bookmarks: document.select(&selector(".kg-bookmark-card")?).count(),
@@ -274,7 +303,7 @@ fn create_environment(name: &str, port: u16) -> Result<Environment> {
         id: docker(&["network", "create", name])?,
     };
     let origin = format!("http://{LOOPBACK_HOST}:{port}");
-    let binding = format!("{LOOPBACK_HOST}:{port}:{CONTAINER_PORT}");
+    let binding = format!("{LOOPBACK_HOST}:{port}:{port}");
     let container = Container {
         id: docker(&[
             "create",
@@ -296,6 +325,8 @@ fn create_environment(name: &str, port: u16) -> Result<Environment> {
             "NODE_ENV=development",
             "--env",
             &format!("server__host={CONTAINER_HOST}"),
+            "--env",
+            &format!("server__port={port}"),
             "--env",
             &format!("url={origin}"),
             "--env",
@@ -321,7 +352,7 @@ fn create_environment(name: &str, port: u16) -> Result<Environment> {
     })
 }
 
-async fn rehearse(files: Vec<PathBuf>, port: u16) -> Result<()> {
+async fn rehearse(files: Vec<PathBuf>, port: u16, include_scheduling: bool) -> Result<()> {
     ensure!(port != 0, "a fixed nonzero loopback port is required");
     let files = ghost_cms_shared::paths::expand_inputs(&files)?;
     let collection =
@@ -352,11 +383,20 @@ async fn rehearse(files: Vec<PathBuf>, port: u16) -> Result<()> {
         error.context(logs)
     })?;
     let client = Ghost::new(&config)?;
+    let drafts = temp.path().join("drafts.json");
+    if include_scheduling {
+        stage_drafts(&client, &collection, &drafts, origin, false).await?;
+    }
+    let cache = if include_scheduling {
+        drafts.with_extension("publication-cache.json")
+    } else {
+        temp.path().join("state.json")
+    };
     let options = PublishOptions {
-        state_path: Some(temp.path().join("state.json")),
+        state_path: Some(cache),
         ..PublishOptions::default()
     };
-    let pages = publish_and_readback(&client, &collection, &options).await?;
+    let pages = publish_and_readback(&client, &collection, &options, include_scheduling).await?;
     let checked_media = verify_pages(&http, origin, &pages).await?;
     for prepared in collection.posts() {
         ensure!(
@@ -372,20 +412,136 @@ async fn rehearse(files: Vec<PathBuf>, port: u16) -> Result<()> {
         "Verified {} posts, {checked_media} local media URLs, preserved text/code/tables/fragments, and an unchanged second publication.",
         pages.len()
     ));
+    if include_scheduling {
+        rehearse_schedule(
+            &client,
+            &collection,
+            &drafts,
+            &temp.path().join("release.json"),
+        )
+        .await?;
+    }
     Ok(())
+}
+
+fn current_time() -> Result<u64> {
+    Ok(std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_secs())
+}
+
+async fn rehearse_schedule(
+    client: &Ghost,
+    collection: &PreparedCollection,
+    drafts: &std::path::Path,
+    plan: &std::path::Path,
+) -> Result<()> {
+    let groups = collection
+        .posts()
+        .iter()
+        .map(|p| vec![p.front().slug.clone()])
+        .collect::<Vec<_>>();
+    let now = current_time()?;
+    create_release_plan(
+        client,
+        drafts,
+        &groups,
+        plan,
+        now,
+        ghost_cms_shared::filesystem::local_files(),
+    )
+    .await?;
+    apply_release_plan(
+        client,
+        plan,
+        current_time()?,
+        ghost_cms_shared::filesystem::local_files(),
+    )
+    .await?;
+    apply_release_plan(
+        client,
+        plan,
+        current_time()?,
+        ghost_cms_shared::filesystem::local_files(),
+    )
+    .await?;
+    let report =
+        verify_release_plan(client, plan, ghost_cms_shared::filesystem::local_files()).await?;
+    ensure!(
+        report.posts.len() == collection.posts().len(),
+        "Release inventory changed"
+    );
+    progress(format_args!(
+        "Verified {} scheduled posts and an unchanged second registration.",
+        report.posts.len()
+    ));
+    let fixture = client
+        .posts()
+        .create(&PostInput {
+            title: "Local scheduling transition".to_owned(),
+            slug: Some("local-scheduling-transition".to_owned()),
+            html: Some("<p>Scheduled publication transition.</p>".to_owned()),
+            ..PostInput::default()
+        })
+        .await?;
+    let at = time::OffsetDateTime::from_unix_timestamp(i64::try_from(
+        current_time()? + TRANSITION_DELAY_SECONDS,
+    )?)?;
+    let at = format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        at.year(),
+        u8::from(at.month()),
+        at.day(),
+        at.hour(),
+        at.minute(),
+        at.second()
+    );
+    client
+        .posts()
+        .schedule(
+            &fixture.id,
+            fixture
+                .updated_at
+                .as_deref()
+                .context("Fixture revision missing")?,
+            &at,
+        )
+        .await?;
+    for _ in 0..TRANSITION_ATTEMPTS {
+        let post = client.posts().get(&fixture.id).await?;
+        if post.status == PostStatus::Published {
+            progress(format_args!(
+                "Verified a real scheduled-to-published transition."
+            ));
+            return Ok(());
+        }
+        ensure!(
+            post.status == PostStatus::Scheduled,
+            "Unexpected scheduling transition state"
+        );
+        tokio::time::sleep(READY_POLL_INTERVAL).await;
+    }
+    anyhow::bail!(
+        "Scheduled publication was not observed within the fixed polling budget; verification is inconclusive"
+    )
 }
 
 async fn publish_and_readback(
     client: &Ghost,
     collection: &PreparedCollection,
     options: &PublishOptions,
+    staged: bool,
 ) -> Result<BTreeMap<String, Content>> {
     let mut pages = BTreeMap::new();
     for prepared in collection.posts() {
         let outcome = publish_prepared(client, prepared, options).await?;
         ensure!(
-            matches!(outcome, PublishOutcome::Created { .. }),
-            "first rehearsal did not create {}",
+            if staged {
+                matches!(outcome, PublishOutcome::SkippedUnchanged { .. })
+            } else {
+                matches!(outcome, PublishOutcome::Created { .. })
+            },
+            "initial rehearsal publication differs for {}",
             prepared.front().slug
         );
         let post = client
@@ -393,12 +549,19 @@ async fn publish_and_readback(
             .find_by_slug(&prepared.front().slug)
             .await?
             .context("created post missing")?;
-        let actual = content(post.html.as_deref().context("Ghost returned no HTML")?)?;
+        let mut actual = content(post.html.as_deref().context("Ghost returned no HTML")?)?;
+        ensure!(
+            post.editor_blocks()?.keys().any(|kind| kind != "html"),
+            "Ghost wrapped the entire body in HTML for {}",
+            post.slug
+        );
         let expected = content(prepared.rendered_html())?;
         ensure!(
             actual.text == expected.text,
-            "Ghost changed text in {}",
-            post.slug
+            "Ghost changed text in {}: expected {:?}, received {:?}",
+            post.slug,
+            expected.text,
+            actual.text
         );
         ensure!(
             actual.code == expected.code,
@@ -416,9 +579,25 @@ async fn publish_and_readback(
             post.slug
         );
         ensure!(
-            actual.captions == expected.captions && actual.bookmarks == expected.bookmarks,
-            "Ghost changed captions or link cards in {}",
+            post.feature_image_alt == prepared.front().feature_image_alt
+                && post.feature_image_caption == prepared.front().feature_image_caption,
+            "Ghost changed feature metadata in {}",
             post.slug
+        );
+        if prepared.front().tags.is_empty() {
+            ensure!(post.tags.is_empty(), "Ghost assigned tags to {}", post.slug);
+        }
+        if let Some(cover) = post.feature_image {
+            actual.images.push(cover);
+        }
+        ensure!(
+            actual.captions == expected.captions && actual.bookmarks == expected.bookmarks,
+            "Ghost changed captions or link cards in {}: expected {:?} / {}, received {:?} / {}",
+            post.slug,
+            expected.captions,
+            expected.bookmarks,
+            actual.captions,
+            actual.bookmarks
         );
         ensure!(
             actual
@@ -427,8 +606,12 @@ async fn publish_and_readback(
                 .map(|(kind, _)| kind)
                 .eq(expected.media.iter().map(|(kind, _)| kind))
                 && actual.posters.len() == expected.posters.len(),
-            "Ghost changed media players or posters in {}",
-            post.slug
+            "Ghost changed media players or posters in {}: expected {} players / {} posters, received {} / {}",
+            post.slug,
+            expected.media.len(),
+            expected.posters.len(),
+            actual.media.len(),
+            actual.posters.len()
         );
         pages.insert(post.slug, actual);
         if pages.len().is_multiple_of(PROGRESS_INTERVAL) || pages.len() == collection.posts().len()
@@ -491,8 +674,12 @@ async fn verify_pages(
 async fn main() -> Result<()> {
     match Cli::parse().command {
         Action::VerifyEvidence => evidence::run(&std::env::current_dir()?),
-        Action::Rehearse { files, port } => tokio::select! {
-            result = rehearse(files, port) => result,
+        Action::Rehearse {
+            files,
+            port,
+            include_scheduling,
+        } => tokio::select! {
+            result = rehearse(files, port, include_scheduling) => result,
             signal = tokio::signal::ctrl_c() => { signal?; anyhow::bail!("rehearsal interrupted; verification is inconclusive") },
             () = tokio::time::sleep(REHEARSAL_DEADLINE) => anyhow::bail!("rehearsal exceeded its diagnostic deadline; verification is inconclusive"),
         },

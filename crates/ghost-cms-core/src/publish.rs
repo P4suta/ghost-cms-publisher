@@ -96,6 +96,8 @@ pub(crate) fn build_input(
             .map(|t| TagInput { name: t.clone() })
             .collect(),
         feature_image: resolved.feature_image,
+        feature_image_alt: front.feature_image_alt.clone(),
+        feature_image_caption: front.feature_image_caption.clone(),
         custom_excerpt: front.excerpt.clone(),
         featured: front.featured,
         visibility: front.visibility,

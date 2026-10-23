@@ -130,6 +130,11 @@ pub fn post_value(post: &Post) -> Value {
         "url": post.url,
         "updated_at": post.updated_at,
         "html": post.html,
+        "feature_image": post.feature_image,
+        "feature_image_alt": post.feature_image_alt,
+        "feature_image_caption": post.feature_image_caption,
+        "published_at": post.published_at,
+        "tags": post.tags.iter().map(|tag| tag.name.as_str()).collect::<Vec<_>>(),
     })
 }
 

@@ -17,6 +17,12 @@ fn post() -> Post {
         url: Some("https://x/h".to_owned()),
         updated_at: Some("2026-06-26".to_owned()),
         html: None,
+        lexical: None,
+        feature_image: None,
+        feature_image_alt: None,
+        feature_image_caption: None,
+        published_at: None,
+        tags: Vec::new(),
     }
 }
 
