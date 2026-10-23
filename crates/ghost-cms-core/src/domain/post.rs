@@ -1,6 +1,7 @@
 //! Post domain types and the post request/response DTOs.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use super::meta::{CodeInjection, OpenGraph, SeoMeta, TwitterCard, Visibility};
 
@@ -46,7 +47,7 @@ impl std::str::FromStr for PostStatus {
 
 /// A tag reference sent when creating/updating a post (Ghost resolves or
 /// creates the tag by name).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TagInput {
     /// Tag display name.
     pub name: String,
@@ -75,6 +76,12 @@ pub struct PostInput {
     /// Feature image URL (already uploaded).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub feature_image: Option<String>,
+    /// Accessible feature image description.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feature_image_alt: Option<String>,
+    /// Feature image caption and attribution.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feature_image_caption: Option<String>,
     /// Custom excerpt.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_excerpt: Option<String>,
@@ -135,6 +142,92 @@ pub struct Post {
     /// Rendered HTML, present when `formats=html` was requested.
     #[serde(default)]
     pub html: Option<String>,
+    /// Serialized editor document returned by Ghost.
+    #[serde(default)]
+    pub lexical: Option<String>,
+    /// Assigned tags, projected to their display names.
+    #[serde(default)]
+    pub tags: Vec<TagInput>,
+    /// Feature image URL returned by Ghost.
+    #[serde(default)]
+    pub feature_image: Option<String>,
+    /// Accessible feature image description.
+    #[serde(default)]
+    pub feature_image_alt: Option<String>,
+    /// Feature image caption and attribution.
+    #[serde(default)]
+    pub feature_image_caption: Option<String>,
+    /// Actual or scheduled publication time.
+    #[serde(default)]
+    pub published_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct EditorDocument {
+    root: EditorRoot,
+}
+
+#[derive(Deserialize)]
+struct EditorRoot {
+    #[serde(rename = "type")]
+    kind: String,
+    children: Vec<EditorBlock>,
+}
+
+#[derive(Deserialize)]
+struct EditorBlock {
+    #[serde(rename = "type")]
+    kind: String,
+    #[serde(default)]
+    text: String,
+    #[serde(default)]
+    children: Vec<Self>,
+}
+
+impl EditorBlock {
+    fn native_content(&self) -> bool {
+        match self.kind.as_str() {
+            "html" | "linebreak" => false,
+            "text" | "extended-text" => !self.text.trim().is_empty(),
+            "paragraph" | "heading" | "quote" | "list" | "listitem" | "link" | "autolink" => {
+                !self.text.trim().is_empty() || self.children.iter().any(Self::native_content)
+            },
+            _ => !self.kind.is_empty(),
+        }
+    }
+}
+
+impl Post {
+    /// Count HTML cards and nonempty native blocks in the saved Ghost editor document.
+    /// # Errors
+    /// Refuses missing, malformed, or empty editor documents.
+    pub fn editor_blocks(&self) -> crate::Result<BTreeMap<String, usize>> {
+        let invalid = || {
+            crate::CoreError::Inconsistent(format!(
+                "post {} has no valid editor document",
+                self.slug
+            ))
+        };
+        let document: EditorDocument =
+            serde_json::from_str(self.lexical.as_deref().ok_or_else(invalid)?)?;
+        if document.root.kind != "root" || document.root.children.is_empty() {
+            return Err(invalid());
+        }
+        let mut counts = BTreeMap::new();
+        for block in document.root.children {
+            if block.kind.is_empty() {
+                return Err(invalid());
+            }
+            if block.kind != "html" && !block.native_content() {
+                continue;
+            }
+            *counts.entry(block.kind).or_insert(0) += 1;
+        }
+        if counts.is_empty() {
+            return Err(invalid());
+        }
+        Ok(counts)
+    }
 }
 
 /// Request envelope for the `posts` resource.

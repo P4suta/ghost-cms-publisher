@@ -40,6 +40,7 @@ No production Ghost configuration is read by this command.
 
 ```sh
 mise x -- just rehearse blog/posts/
+mise x -- just rehearse blog/posts/ --include-scheduling
 mise x -- just proofs
 ```
 
@@ -48,7 +49,9 @@ The owner-side runner applies memory, CPU, process, and deadline limits.
 A limit stop is inconclusive.
 The [proof receipt](docs/proof-receipt.json) records the measured results for the exact policy source and manifest.
 `verify-evidence` checks that receipt's identities and inventory; it does not run Kani or independently certify the recorded verdict.
-When the policy changes, run both proofs and update the receipt with their actual results before relying on it.
+When the policy changes, run all five proofs and update the receipt with their actual results before relying on it.
+The scheduling rehearsal also verifies complete draft receipts, a frozen release plan, an unchanged repeat registration, and a real scheduled-to-published transition.
+Its container listens on the same loopback port that Ghost advertises so internal scheduler callbacks reach the server.
 The receipt regression test rejects changed source, changed configuration inputs, failed verdicts, and an empty inventory.
 Parser, filesystem, HTTP, and Ghost conversion behavior use fixtures and real integration checks rather than a theorem about those external systems.
 

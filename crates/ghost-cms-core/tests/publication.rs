@@ -9,6 +9,89 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const TOKEN: &str = "64abc:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
+#[test]
+fn native_editor_readback_ignores_empty_text_containers() -> Result<(), Box<dyn std::error::Error>>
+{
+    use serde_json::json;
+    let post =
+        |children: serde_json::Value| -> Result<ghost_cms_core::domain::Post, serde_json::Error> {
+            serde_json::from_value(json!({
+                "id":"post", "slug":"readback", "status":"draft",
+                "lexical":json!({"root":{"type":"root","children":children}}).to_string()
+            }))
+        };
+    let empty = json!({"type":"paragraph","children":[{"type":"text","text":" \n"}]});
+    let html = json!({"type":"html","html":"<p>A story.</p>"});
+    assert!(post(json!([empty]))?.editor_blocks().is_err());
+    let blocks = post(json!([html, empty, {
+        "type":"quote","children":[empty]
+    }]))?
+    .editor_blocks()?;
+    assert_eq!(blocks.len(), 1);
+    assert_eq!(blocks.get("html"), Some(&1));
+    let paragraph = json!({"type":"paragraph","children":[{
+        "type":"link","children":[{"type":"extended-text","text":"A story."}]
+    }]});
+    assert_eq!(post(json!([html, paragraph]))?.editor_blocks()?.len(), 2);
+    let cards = post(json!([
+        {"type":"image","src":"https://example.com/photo.jpg"},
+        {"type":"codeblock","code":"let answer = 42;"}
+    ]))?
+    .editor_blocks()?;
+    assert_eq!(cards.len(), 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn feature_metadata_survives_preview_and_metadata_only_updates()
+-> Result<(), Box<dyn std::error::Error>> {
+    let server = MockServer::start().await;
+    let temp = tempfile::tempdir()?;
+    let file = temp.path().join("post.md");
+    let source = |caption: &str| {
+        format!(
+            "---\ntitle: Hello\nslug: hello\nfeature_image: https://example.com/cover.jpg\nfeature_image_alt: 富士山与湖畔\nfeature_image_caption: '{caption}'\n---\n\nHello.\n"
+        )
+    };
+    std::fs::write(&file, source("湖畔眺望富士山 · Photo by A & B"))?;
+    let collection = ghost_cms_shared::filesystem::prepare_collection(
+        std::slice::from_ref(&file),
+        ghost_cms_core::preparation::PrepareOptions::default(),
+    )?;
+    let preview = temp.path().join("preview");
+    collection.write_preview(&preview)?;
+    let html = std::fs::read_to_string(preview.join("hello/index.html"))?;
+    assert!(html.contains("alt=\"富士山与湖畔\""));
+    assert!(html.contains("湖畔眺望富士山 · Photo by A &amp; B"));
+    existing(&server, "t1").await;
+    updates(&server, 2).await;
+    let options = PublishOptions {
+        state_path: Some(temp.path().join("state.json")),
+        ..PublishOptions::default()
+    };
+    let client = client(&server)?;
+    publish_file(&client, &file, &options).await?;
+    std::fs::write(&file, source("湖畔眺望富士山 · Photo by C"))?;
+    publish_file(&client, &file, &options).await?;
+    let requests = server.received_requests().await.ok_or("no request log")?;
+    let payloads = requests
+        .iter()
+        .filter(|r| r.method == "PUT")
+        .map(|r| serde_json::from_slice::<serde_json::Value>(&r.body))
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(payloads.len(), 2);
+    let imported_html = payloads[0]["posts"][0]["html"]
+        .as_str()
+        .ok_or("HTML payload missing")?;
+    assert!(!imported_html.contains("kg-card-begin: html"));
+    assert_eq!(payloads[0]["posts"][0]["feature_image_alt"], "富士山与湖畔");
+    assert_eq!(
+        payloads[1]["posts"][0]["feature_image_caption"],
+        "湖畔眺望富士山 · Photo by C"
+    );
+    Ok(())
+}
+
 fn client(server: &MockServer) -> ghost_cms_core::Result<Ghost> {
     Ghost::new(&Config::new(
         server.uri(),

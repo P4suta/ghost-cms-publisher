@@ -12,6 +12,7 @@ pub(crate) mod meta;
 pub(crate) mod new;
 pub(crate) mod open;
 pub(crate) mod publish;
+pub(crate) mod schedule;
 pub(crate) mod tags;
 pub(crate) mod upload;
 pub(crate) mod watch;

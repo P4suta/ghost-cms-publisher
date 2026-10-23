@@ -153,6 +153,8 @@ pub(crate) enum Command {
     /// Create or update one or more posts from Markdown files (idempotent by slug).
     #[command(after_help = PUBLISH_EXAMPLES)]
     Publish(commands::publish::PublishArgs),
+    /// Prepare drafts, freeze a release plan, and resume scheduled web publication.
+    Schedule(commands::schedule::ScheduleArgs),
     /// List recent posts.
     List(commands::list::ListArgs),
     /// Fetch one post by slug.

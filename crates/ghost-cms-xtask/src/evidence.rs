@@ -7,6 +7,9 @@ use sha2::{Digest, Sha256};
 const SLUG_UNWIND: u32 = 66;
 const SLUG_COVERS: u32 = 2;
 const DECISION_COVERS: u32 = 3;
+const RELEASE_START_COVERS: u32 = 3;
+const RELEASE_SLOT_COVERS: u32 = 2;
+const REGISTRATION_COVERS: u32 = 3;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -57,6 +60,18 @@ fn verify(receipt: &Receipt, source: &[u8], manifest: &[u8]) -> Result<()> {
         (
             "publication_decisions_preserve_receipts_and_conflicts",
             DECISION_COVERS,
+        ),
+        (
+            "release_start_is_future_aligned_and_after_registered_posts",
+            RELEASE_START_COVERS,
+        ),
+        (
+            "release_slots_are_monotonic_without_overflow",
+            RELEASE_SLOT_COVERS,
+        ),
+        (
+            "registration_decisions_preserve_completed_and_uncertain_writes",
+            REGISTRATION_COVERS,
         ),
     ];
     ensure!(

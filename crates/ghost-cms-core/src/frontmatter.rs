@@ -30,6 +30,12 @@ pub struct FrontMatter {
     /// Feature image — a local path (uploaded on publish) or an absolute URL.
     #[serde(default)]
     pub feature_image: Option<String>,
+    /// Accessible description of the feature image.
+    #[serde(default)]
+    pub feature_image_alt: Option<String>,
+    /// Feature image caption, including attribution when applicable.
+    #[serde(default)]
+    pub feature_image_caption: Option<String>,
     /// Canonical URL for SEO (often the original GitHub doc).
     #[serde(default)]
     pub canonical_url: Option<String>,

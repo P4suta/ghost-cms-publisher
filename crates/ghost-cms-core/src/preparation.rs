@@ -278,7 +278,7 @@ impl PreparedPost {
         crate::publish::build_input(
             &self.front,
             crate::images::ResolvedContent {
-                html: format!("<!--kg-card-begin: html-->\n{html}\n<!--kg-card-end: html-->"),
+                html: html.to_owned(),
                 feature_image: field(self.front.feature_image.as_deref()),
                 og_image: field(self.front.og_image.as_deref()),
                 twitter_image: field(self.front.twitter_image.as_deref()),
@@ -474,7 +474,7 @@ fn validate_fragment(fragment: Option<&str>, headings: &BTreeSet<String>, url: &
 pub struct PreparedCollection {
     pub(crate) posts: Vec<PreparedPost>,
     options: PrepareOptions,
-    files: Files,
+    pub(crate) files: Files,
 }
 
 impl PreparedCollection {

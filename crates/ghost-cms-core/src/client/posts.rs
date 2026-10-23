@@ -12,6 +12,41 @@ pub struct Posts<'a, T: HttpTransport> {
 }
 
 impl<T: HttpTransport> Posts<'_, T> {
+    /// Check whether a static page already owns a candidate slug.
+    /// # Errors
+    /// Returns lookup and response errors.
+    pub async fn page_slug_exists(&self, slug: &str) -> Result<bool> {
+        let mut request = self.ctx.request(Method::Get, "pages/")?;
+        request.query = vec![
+            ("filter".to_owned(), format!("slug:{slug}")),
+            ("limit".to_owned(), "1".to_owned()),
+        ];
+        let value: serde_json::Value = self
+            .ctx
+            .send_json(request, Resource::Post, Operation::Fetch)
+            .await?;
+        let pages = value
+            .get("pages")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| {
+                CoreError::Inconsistent("page lookup returned no collection".to_owned())
+            })?;
+        Ok(!pages.is_empty())
+    }
+
+    /// Schedule only the web publication state and time without replacing content or selecting a newsletter.
+    /// # Errors
+    /// Returns transport, validation, and revision-conflict errors.
+    pub async fn schedule(&self, id: &str, updated_at: &str, published_at: &str) -> Result<Post> {
+        let mut request = self.ctx.request(Method::Put, &format!("posts/{id}/"))?;
+        request.body = json_body(&serde_json::json!({"posts":[{
+            "updated_at":updated_at, "status":"scheduled", "published_at":published_at
+        }]}))?;
+        self.ctx
+            .fetch_one::<PostsResponse>(request, Resource::Post, Operation::Update)
+            .await
+    }
+
     /// Reject payloads above the plan limit before hitting the network.
     fn check_size(body: &PostsRequest) -> Result<()> {
         let len = serde_json::to_vec(body)?.len() as u64;
@@ -32,7 +67,7 @@ impl<T: HttpTransport> Posts<'_, T> {
         let mut req = self.ctx.request(Method::Get, "posts/")?;
         req.query = vec![
             ("filter".to_owned(), format!("slug:{slug}")),
-            ("formats".to_owned(), "html".to_owned()),
+            ("formats".to_owned(), "html,lexical".to_owned()),
             ("limit".to_owned(), "1".to_owned()),
         ];
         let env: PostsResponse = self
@@ -75,7 +110,7 @@ impl<T: HttpTransport> Posts<'_, T> {
     /// Propagates transport and API errors.
     pub async fn get(&self, id: &str) -> Result<Post> {
         let mut req = self.ctx.request(Method::Get, &format!("posts/{id}/"))?;
-        req.query = vec![("formats".to_owned(), "html".to_owned())];
+        req.query = vec![("formats".to_owned(), "html,lexical".to_owned())];
         self.ctx
             .fetch_one::<PostsResponse>(req, Resource::Post, Operation::Fetch)
             .await

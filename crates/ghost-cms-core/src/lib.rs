@@ -25,6 +25,7 @@ pub mod markdown;
 pub mod media;
 pub mod preparation;
 pub mod publish;
+pub mod schedule;
 pub mod transport;
 
 pub(crate) mod auth;
