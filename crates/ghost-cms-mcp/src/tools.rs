@@ -61,11 +61,13 @@ impl GhostServer {
             status_override: parse_status(args.status.as_deref())?,
             allow_raw_html: false,
             state_path: Some(paths::state_path(&self.blog_dir)),
+            route_template: None,
         };
         let file = paths::resolve(&self.blog_dir, &args.file);
-        let outcome = publish::publish_file(self.client.as_ref(), &file, &opts)
-            .await
-            .mcp()?;
+        let outcome =
+            ghost_cms_shared::filesystem::publish_file(self.client.as_ref(), &file, &opts)
+                .await
+                .mcp()?;
         Ok(CallToolResult::success(vec![ContentBlock::text(
             render::outcome_line(&outcome),
         )]))
@@ -93,6 +95,7 @@ impl GhostServer {
             &args.markdown,
             &self.blog_dir,
             &opts,
+            ghost_cms_shared::filesystem::local_files(),
         )
         .await
         .mcp()?;

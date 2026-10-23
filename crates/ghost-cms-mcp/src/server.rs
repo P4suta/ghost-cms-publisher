@@ -21,6 +21,10 @@ pub(crate) struct GhostServer {
 }
 
 #[tool_handler]
+#[expect(
+    clippy::unused_async_trait_impl,
+    reason = "rmcp 2.0 generates the asynchronous tool-list handler from this implementation"
+)]
 impl ServerHandler for GhostServer {
     fn get_info(&self) -> ServerInfo {
         // Set server_info explicitly; the default `from_build_env()` resolves to

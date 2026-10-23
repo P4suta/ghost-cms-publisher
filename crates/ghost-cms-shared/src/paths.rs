@@ -27,7 +27,9 @@ pub fn resolve(base_dir: &Path, p: &str) -> PathBuf {
 
 /// Whether `path` looks like a Markdown file.
 fn is_markdown(path: &Path) -> bool {
-    path.extension().and_then(|e| e.to_str()) == Some("md")
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("md"))
 }
 
 /// Expand publish inputs: directories become their top-level `*.md` files
@@ -43,11 +45,18 @@ pub fn expand_inputs(inputs: &[PathBuf]) -> Result<Vec<PathBuf>> {
                 path: input.display().to_string(),
                 source,
             })?;
-            let mut md: Vec<PathBuf> = entries
-                .flatten()
-                .map(|e| e.path())
-                .filter(|p| is_markdown(p))
-                .collect();
+            let mut md = Vec::new();
+            for entry in entries {
+                let path = entry
+                    .map_err(|source| Error::ReadDir {
+                        path: input.display().to_string(),
+                        source,
+                    })?
+                    .path();
+                if is_markdown(&path) && path.is_file() {
+                    md.push(path);
+                }
+            }
             md.sort();
             out.extend(md);
         } else {

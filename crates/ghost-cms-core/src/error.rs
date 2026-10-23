@@ -132,6 +132,9 @@ pub enum ApiError {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum CoreError {
+    /// A collection failed local validation before publication.
+    #[error(transparent)]
+    Preparation(#[from] crate::preparation::PreparationError),
     /// The Staff Access Token was not `{id}:{secret}` or the secret was not hex.
     #[error("invalid staff token: {0}")]
     InvalidToken(String),

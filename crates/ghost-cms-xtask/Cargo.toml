@@ -1,0 +1,29 @@
+[package]
+name = "ghost-cms-xtask"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Local Ghost publication rehearsals and repository verification."
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+getrandom.workspace = true
+ghost-cms-core.workspace = true
+ghost-cms-shared.workspace = true
+hex.workspace = true
+percent-encoding.workspace = true
+reqwest.workspace = true
+scraper.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

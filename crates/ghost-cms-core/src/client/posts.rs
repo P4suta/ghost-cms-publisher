@@ -39,7 +39,16 @@ impl<T: HttpTransport> Posts<'_, T> {
             .ctx
             .send_json(req, Resource::Post, Operation::Fetch)
             .await?;
-        Ok(env.posts.into_iter().next())
+        let post = env.posts.into_iter().next();
+        if post
+            .as_ref()
+            .is_some_and(|p| p.slug != slug || p.id.is_empty())
+        {
+            return Err(CoreError::Inconsistent(
+                "slug lookup returned a different or unidentified post".to_owned(),
+            ));
+        }
+        Ok(post)
     }
 
     /// `GET /posts/` — newest-updated first.

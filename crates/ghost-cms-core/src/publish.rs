@@ -3,6 +3,7 @@
 mod execute;
 mod plan;
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::client::Ghost;
@@ -10,12 +11,13 @@ use crate::domain::{
     AuthorInput, CodeInjection, OpenGraph, PostInput, PostStatus, SeoMeta, TagInput, TwitterCard,
 };
 use crate::error::Result;
+use crate::filesystem::Files;
 use crate::frontmatter::FrontMatter;
-use crate::images::{ImageResolver, ResolvedContent};
-use crate::markdown;
+use crate::images::ResolvedContent;
+use crate::preparation::{PrepareOptions, PreparedCollection, PreparedPost};
 use crate::transport::HttpTransport;
 
-use self::plan::{decide, load_cached_hash};
+use self::plan::decide;
 
 /// Options controlling a publish run.
 #[derive(Debug, Clone, Default)]
@@ -30,6 +32,8 @@ pub struct PublishOptions {
     pub allow_raw_html: bool,
     /// Path to the JSON state cache (enables unchanged-skip).
     pub state_path: Option<PathBuf>,
+    /// Public Ghost route, defaulting to `/{slug}/`.
+    pub route_template: Option<String>,
 }
 
 /// What a dry run would do.
@@ -77,7 +81,11 @@ pub enum PublishOutcome {
 }
 
 /// Assemble the API payload from front matter and resolved content.
-fn build_input(front: &FrontMatter, resolved: ResolvedContent, status: PostStatus) -> PostInput {
+pub(crate) fn build_input(
+    front: &FrontMatter,
+    resolved: ResolvedContent,
+    status: PostStatus,
+) -> PostInput {
     PostInput {
         title: front.title.clone(),
         html: Some(resolved.html),
@@ -135,11 +143,14 @@ pub async fn publish_file<T: HttpTransport>(
     client: &Ghost<T>,
     path: &Path,
     opts: &PublishOptions,
+    files: Files,
 ) -> Result<PublishOutcome> {
-    let raw = std::fs::read_to_string(path)?;
-    let parsed = markdown::parse(&raw)?;
-    let base_dir = path.parent().unwrap_or_else(|| Path::new("."));
-    publish_post(client, parsed.front, &parsed.body_md, base_dir, opts).await
+    let collection = PreparedCollection::load(&[path.to_owned()], prepare_options(opts), files)?;
+    let post = collection
+        .posts()
+        .first()
+        .ok_or_else(|| crate::CoreError::FrontMatter("empty publication collection".to_owned()))?;
+    publish_prepared(client, post, opts).await
 }
 
 /// Idempotently create-or-update a post from parsed front matter and a Markdown body.
@@ -156,49 +167,69 @@ pub async fn publish_post<T: HttpTransport>(
     body_md: &str,
     base_dir: &Path,
     opts: &PublishOptions,
+    files: Files,
 ) -> Result<PublishOutcome> {
-    front.validate()?;
-    let html_raw = markdown::render_html(body_md, opts.allow_raw_html);
-    let html_bytes = html_raw.len();
+    let options = prepare_options(opts);
+    let mut post = PreparedPost::from_parts(
+        base_dir.join("inline.md"),
+        front,
+        body_md.to_owned(),
+        &options,
+        files,
+    )?;
+    post.resolve(&BTreeMap::new(), &options)?;
+    publish_prepared(client, &post, opts).await
+}
 
-    // In a dry run we keep local paths (no uploads); otherwise resolve images.
-    let resolved = if opts.dry_run {
-        ResolvedContent {
-            html: html_raw,
-            feature_image: front.feature_image.clone(),
-            og_image: front.og_image.clone(),
-            twitter_image: front.twitter_image.clone(),
-        }
+/// Create the same local validation options for every publishing adapter.
+#[must_use]
+pub fn prepare_options(opts: &PublishOptions) -> PrepareOptions {
+    PrepareOptions {
+        allow_raw_html: opts.allow_raw_html,
+        status_override: opts.status_override,
+        route_template: opts
+            .route_template
+            .clone()
+            .unwrap_or_else(|| "/{slug}/".to_owned()),
+    }
+}
+
+/// Publish a locally validated post without reparsing its source file.
+///
+/// # Errors
+/// Refuses remote edits, invalid receipts, changed media, and failed writes.
+pub async fn publish_prepared<T: HttpTransport>(
+    client: &Ghost<T>,
+    post: &PreparedPost,
+    opts: &PublishOptions,
+) -> Result<PublishOutcome> {
+    let _lease = if opts.dry_run {
+        None
     } else {
-        let mut resolver = ImageResolver::new(client, base_dir);
-        ResolvedContent {
-            html: resolver.html(&html_raw).await?,
-            feature_image: resolver.field(front.feature_image.as_deref()).await?,
-            og_image: resolver.field(front.og_image.as_deref()).await?,
-            twitter_image: resolver.field(front.twitter_image.as_deref()).await?,
-        }
+        opts.state_path
+            .as_deref()
+            .map(|path| crate::hash::lock(path, post.files.as_ref()))
+            .transpose()?
     };
-
-    let status = opts.status_override.unwrap_or(front.status);
-    let input = build_input(&front, resolved, status);
-    let content_hash = hash_input(&input)?;
-
-    let existing = client.posts().find_by_slug(&front.slug).await?;
-    let cached_hash = load_cached_hash(opts, &front.slug);
-    let plan = decide(existing, &content_hash, cached_hash.as_deref(), opts.force)?;
-
+    let mut cache = opts
+        .state_path
+        .as_deref()
+        .map(|path| crate::hash::StateCache::load(path, post.files.as_ref()))
+        .transpose()?
+        .unwrap_or_default();
+    let existing = client.posts().find_by_slug(&post.front.slug).await?;
+    let receipt = cache
+        .sites
+        .get(client.cache_namespace())
+        .and_then(|s| s.posts.get(&post.front.slug));
+    let plan = decide(existing, &post.source_hash, receipt, opts.force)?;
     if opts.dry_run {
         return Ok(PublishOutcome::DryRun {
             action: plan.action(),
-            slug: front.slug,
-            html_bytes,
+            slug: post.front.slug.clone(),
+            html_bytes: post.html.len(),
         });
     }
-
-    execute::execute(client, plan, &input, &front.slug, content_hash, opts).await
-}
-
-/// Hash the serialized payload, used as the idempotency key.
-fn hash_input(input: &PostInput) -> Result<String> {
-    Ok(crate::hash::content_hash(&[&serde_json::to_string(input)?]))
+    tracing::info!(slug = %post.front.slug, action = ?plan.action(), "publication plan ready");
+    execute::execute(client, plan, post, &mut cache, opts).await
 }
