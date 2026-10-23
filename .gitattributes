@@ -1,6 +1,9 @@
-# Normalize line endings to LF in the repository for deterministic checkouts
-# across Linux/macOS/Windows CI runners.
+# Normalize repository line endings for deterministic checkouts on every CI runner.
 * text=auto eol=lf
 *.png binary
 *.jpg binary
 *.ico binary
+
+# Multilingual Markdown inputs and expected rendering fragments.
+crates/ghost-cms-core/tests/fixtures/preparation/*.md dotguard-lang=off
+crates/ghost-cms-core/tests/fixtures/preparation/*.expected dotguard-lang=off

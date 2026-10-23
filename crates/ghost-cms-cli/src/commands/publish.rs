@@ -5,9 +5,11 @@ use std::path::{Path, PathBuf};
 use ghost_cms_core::CoreError;
 use ghost_cms_core::Ghost;
 use ghost_cms_core::domain::PostStatus;
-use ghost_cms_core::publish::{PublishOptions, PublishOutcome, publish_file};
+use ghost_cms_core::preparation::PreparedPost;
+use ghost_cms_core::publish::{PublishOptions, PublishOutcome, prepare_options, publish_prepared};
 use ghost_cms_core::transport::ReqwestTransport;
 use ghost_cms_shared::error::Error;
+use ghost_cms_shared::filesystem::prepare_collection;
 use ghost_cms_shared::paths::{expand_inputs, state_path};
 use ghost_cms_shared::render::summarize;
 
@@ -47,6 +49,9 @@ pub(crate) struct PublishArgs {
     /// Open each published post in the browser afterwards.
     #[arg(long)]
     open: bool,
+    /// Public Ghost route, containing one {slug} placeholder.
+    #[arg(long, default_value = "/{slug}/")]
+    route_template: String,
 }
 
 impl PublishArgs {
@@ -64,17 +69,28 @@ impl PublishArgs {
 
 impl Command for PublishArgs {
     async fn run(self, ctx: &Ctx) -> miette::Result<()> {
-        let client = ctx.client()?;
         let status_override = self.status_override();
         let expanded = expand_inputs(&self.files).friendly()?;
         if expanded.is_empty() {
             return Err(miette::miette!("no Markdown files to publish"));
         }
-        let total = expanded.len();
+        let options = PublishOptions {
+            dry_run: self.dry_run,
+            force: self.force,
+            status_override,
+            allow_raw_html: self.allow_raw_html,
+            state_path: (!self.no_cache).then(|| state_path(&ctx.settings.blog_dir)),
+            route_template: Some(self.route_template.clone()),
+        };
+        let collection = prepare_collection(&expanded, prepare_options(&options))
+            .map_err(|e| to_report(e.into()))?;
+        let client = ctx.client()?;
+        let total = collection.posts().len();
         let mut outcomes = Vec::with_capacity(total);
-        for (idx, file) in expanded.iter().enumerate() {
+        for (idx, post) in collection.posts().iter().enumerate() {
+            let file = post.source_path();
             let outcome = self
-                .publish_one(ctx, &client, file, status_override, idx + 1, total)
+                .publish_one(ctx, &client, file, post, &options, (idx + 1, total))
                 .await?;
             outcomes.push(outcome);
         }
@@ -92,17 +108,11 @@ impl PublishArgs {
         ctx: &Ctx,
         client: &Ghost<ReqwestTransport>,
         file: &Path,
-        status_override: Option<PostStatus>,
-        index: usize,
-        total: usize,
+        post: &PreparedPost,
+        opts: &PublishOptions,
+        progress: (usize, usize),
     ) -> miette::Result<PublishOutcome> {
-        let opts = PublishOptions {
-            dry_run: self.dry_run,
-            force: self.force,
-            status_override,
-            allow_raw_html: self.allow_raw_html,
-            state_path: (!self.no_cache).then(|| state_path(&ctx.settings.blog_dir)),
-        };
+        let (index, total) = progress;
 
         let label = if total > 1 {
             format!("[{index}/{total}] publishing {}…", file.display())
@@ -110,7 +120,7 @@ impl PublishArgs {
             format!("publishing {}…", file.display())
         };
         let sp = ctx.spinner(&label);
-        let result = publish_file(client, file, &opts).await;
+        let result = publish_prepared(client, post, opts).await;
         sp.finish_and_clear();
 
         let outcome = match result {

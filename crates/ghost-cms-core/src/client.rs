@@ -194,15 +194,43 @@ impl Ghost<ReqwestTransport> {
 }
 
 impl<T: HttpTransport> Ghost<T> {
+    pub(crate) fn cache_namespace(&self) -> &str {
+        self.ctx.base.as_str()
+    }
     /// Build a client over an explicit transport (used in tests).
     ///
     /// # Errors
     /// Returns an error if the token is malformed or the URL is invalid.
     pub fn with_transport(transport: T, cfg: &Config) -> Result<Self> {
         let token = StaffToken::parse(&cfg.token)?;
-        let base_str = cfg.api_url.trim_end_matches('/');
-        let base = Url::parse(&format!("{base_str}{ADMIN_API_PATH}"))
+        let origin = Url::parse(&cfg.api_url)
             .map_err(|e| CoreError::Config(format!("invalid api url: {e}")))?;
+        if !matches!(origin.scheme(), "http" | "https")
+            || origin.host_str().is_none()
+            || !origin.username().is_empty()
+            || origin.password().is_some()
+            || origin.query().is_some()
+            || origin.fragment().is_some()
+        {
+            return Err(CoreError::Config(
+                "site URL must be HTTP or HTTPS without credentials, a query or a fragment"
+                    .to_owned(),
+            ));
+        }
+        let base = if origin
+            .path()
+            .trim_end_matches('/')
+            .ends_with(ADMIN_API_PATH.trim_end_matches('/'))
+        {
+            Url::parse(&format!("{}/", origin.as_str().trim_end_matches('/')))
+        } else {
+            Url::parse(&format!(
+                "{}{}",
+                origin.as_str().trim_end_matches('/'),
+                ADMIN_API_PATH
+            ))
+        }
+        .map_err(|e| CoreError::Config(format!("invalid admin URL: {e}")))?;
         Ok(Self {
             ctx: ClientCtx {
                 transport,

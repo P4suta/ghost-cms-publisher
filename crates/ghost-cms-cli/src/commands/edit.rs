@@ -16,7 +16,13 @@ pub(crate) struct EditArgs {
 }
 
 impl Command for EditArgs {
-    async fn run(self, ctx: &Ctx) -> miette::Result<()> {
+    fn run(self, ctx: &Ctx) -> impl std::future::Future<Output = miette::Result<()>> {
+        std::future::ready(self.edit(ctx))
+    }
+}
+
+impl EditArgs {
+    fn edit(self, ctx: &Ctx) -> miette::Result<()> {
         let slug = crate::pick::local_post_slug(ctx, self.slug)?;
         let path = find_post_file(&ctx.settings.blog_dir, &slug).friendly()?;
         ctx.note(&format!(

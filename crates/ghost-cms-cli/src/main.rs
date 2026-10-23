@@ -84,6 +84,8 @@ async fn main() -> miette::Result<()> {
 /// Dispatch a non-meta command against the resolved context.
 async fn dispatch(command: Command, ctx: &Ctx) -> miette::Result<()> {
     match command {
+        Command::Check(a) => a.run(ctx).await,
+        Command::Preview(a) => a.run(ctx).await,
         Command::Init(a) => a.run(ctx).await,
         Command::Login(a) => a.run(ctx).await,
         Command::Doctor(a) => a.run(ctx).await,

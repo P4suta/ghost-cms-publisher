@@ -7,6 +7,7 @@ pub(crate) mod edit;
 pub(crate) mod get;
 pub(crate) mod init;
 pub(crate) mod list;
+pub(crate) mod local;
 pub(crate) mod meta;
 pub(crate) mod new;
 pub(crate) mod open;

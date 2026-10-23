@@ -58,6 +58,7 @@ pub fn content_type(path: &Path) -> &'static str {
         Some("wav") => "audio/wav",
         Some("ogg") => "audio/ogg",
         Some("m4a") => "audio/mp4",
+        Some("aac") => "audio/aac",
         Some("flac") => "audio/flac",
         Some("pdf") => "application/pdf",
         Some("zip") => "application/zip",

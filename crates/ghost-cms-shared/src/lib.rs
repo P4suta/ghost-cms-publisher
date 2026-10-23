@@ -11,6 +11,7 @@
 
 pub mod config;
 pub mod error;
+pub mod filesystem;
 pub mod media;
 pub mod paths;
 pub mod render;

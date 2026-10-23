@@ -103,6 +103,9 @@ impl ReqwestTransport {
     /// Returns a [`TransportError`] if the `reqwest` client cannot be built.
     pub fn new() -> Result<Self, TransportError> {
         let http = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .connect_timeout(crate::constants::HTTP_CONNECT_TIMEOUT)
+            .timeout(crate::constants::HTTP_REQUEST_TIMEOUT)
             .user_agent(concat!("ghost-cms-publisher/", env!("CARGO_PKG_VERSION")))
             .build()?;
         Ok(Self { http })
@@ -129,11 +132,14 @@ impl MockTransport {
 
 #[cfg(test)]
 impl HttpTransport for MockTransport {
-    async fn execute(&self, _req: HttpRequest) -> Result<HttpResponse, TransportError> {
-        Ok(HttpResponse {
+    fn execute(
+        &self,
+        _req: HttpRequest,
+    ) -> impl Future<Output = Result<HttpResponse, TransportError>> + Send {
+        std::future::ready(Ok(HttpResponse {
             status: self.status,
             body: self.body.clone(),
-        })
+        }))
     }
 }
 

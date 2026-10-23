@@ -16,6 +16,8 @@ const HELP_STYLES: Styles = Styles::styled()
 /// Worked examples appended to the top-level `--help`.
 const TOP_EXAMPLES: &str = "\
 Examples:
+  ghost-cms check blog/posts/        Validate a collection without credentials
+  ghost-cms preview blog/posts/ --output preview   Render a local preview
   ghost-cms init                     Guided first-time setup (URL + token)
   ghost-cms new \"My First Post\"       Scaffold a draft and open it in $EDITOR
   ghost-cms publish blog/posts/      Publish every Markdown file in a directory
@@ -133,6 +135,10 @@ impl From<ColorArg> for ColorChoice {
     reason = "clap subcommand variants are sized inline; boxing arg fields breaks clap derive"
 )]
 pub(crate) enum Command {
+    /// Validate a publication collection without credentials or network access.
+    Check(commands::local::CheckArgs),
+    /// Render a local HTML preview with article navigation and copied media.
+    Preview(commands::local::PreviewArgs),
     /// Guided first-time setup (URL + token), validated and saved.
     Init(commands::init::InitArgs),
     /// Set or update the Staff Access Token.

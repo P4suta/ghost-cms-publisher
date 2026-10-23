@@ -1,75 +1,63 @@
-//! Side-effecting execution of a decided [`Plan`].
-
 use super::plan::Plan;
 use super::{PublishOptions, PublishOutcome};
 use crate::client::Ghost;
-use crate::domain::PostInput;
-use crate::error::Result;
+use crate::error::{CoreError, Result};
 use crate::hash::{PostState, StateCache};
+use crate::preparation::PreparedPost;
 use crate::transport::HttpTransport;
 
-/// Execute a non-dry-run [`Plan`], writing to Ghost and recording cache state.
-///
-/// # Errors
-/// Propagates transport and API errors.
 pub(super) async fn execute<T: HttpTransport>(
     client: &Ghost<T>,
     plan: Plan,
-    input: &PostInput,
-    slug: &str,
-    content_hash: String,
+    prepared: &PreparedPost,
+    cache: &mut StateCache,
     opts: &PublishOptions,
 ) -> Result<PublishOutcome> {
-    match plan {
-        Plan::Skip { id } => Ok(PublishOutcome::SkippedUnchanged { id }),
-        Plan::Create => {
-            let post = client.posts().create(input).await?;
-            record_state(
-                opts,
-                slug,
-                PostState {
-                    id: post.id.clone(),
-                    content_hash,
-                    updated_at: post.updated_at.clone(),
-                },
-            );
-            Ok(PublishOutcome::Created {
-                id: post.id,
-                url: post.url,
-            })
-        },
-        Plan::Update { id, updated_at } => {
-            let post = client.posts().update(&id, input, &updated_at).await?;
-            record_state(
-                opts,
-                slug,
-                PostState {
-                    id: post.id.clone(),
-                    content_hash,
-                    updated_at: post.updated_at.clone(),
-                },
-            );
-            Ok(PublishOutcome::Updated {
-                id: post.id,
-                url: post.url,
-            })
-        },
+    if let Plan::Skip { id } = plan {
+        return Ok(PublishOutcome::SkippedUnchanged { id });
     }
-}
-
-/// Record the published state for `slug` in the cache file, if one is set.
-///
-/// Cache failures are logged but never fail the publish.
-fn record_state(opts: &PublishOptions, slug: &str, state: PostState) {
-    let Some(path) = opts.state_path.as_deref() else {
-        return;
+    let urls = crate::images::resolve(client, prepared, cache, opts.state_path.as_deref()).await?;
+    let input = prepared.publication(&urls)?;
+    let (post, created) = match plan {
+        Plan::Create => (client.posts().create(&input).await?, true),
+        Plan::Update { id, updated_at } => (
+            client.posts().update(&id, &input, &updated_at).await?,
+            false,
+        ),
+        Plan::Skip { id } => return Ok(PublishOutcome::SkippedUnchanged { id }),
     };
-    let mut cache = StateCache::load(path).unwrap_or_else(|e| {
-        tracing::warn!("ignoring unreadable publish state cache: {e}");
-        StateCache::default()
-    });
-    cache.posts.insert(slug.to_owned(), state);
-    if let Err(e) = cache.save(path) {
-        tracing::warn!("failed to persist publish state cache: {e}");
+    if post.slug != prepared.front.slug
+        || post.id.is_empty()
+        || post.updated_at.as_ref().is_none_or(String::is_empty)
+        || post.status != prepared.front.status
+    {
+        return Err(CoreError::Inconsistent("post write returned an unexpected identity, revision or status; inspect Ghost before retrying".to_owned()));
+    }
+    cache
+        .sites
+        .entry(client.cache_namespace().to_owned())
+        .or_default()
+        .posts
+        .insert(
+            prepared.front.slug.clone(),
+            PostState {
+                id: post.id.clone(),
+                content_hash: prepared.source_hash.clone(),
+                updated_at: post.updated_at.clone(),
+            },
+        );
+    if let Some(path) = opts.state_path.as_deref() {
+        cache.save(path, prepared.files.as_ref())?;
+    }
+    if created {
+        Ok(PublishOutcome::Created {
+            id: post.id,
+            url: post.url,
+        })
+    } else {
+        Ok(PublishOutcome::Updated {
+            id: post.id,
+            url: post.url,
+        })
     }
 }

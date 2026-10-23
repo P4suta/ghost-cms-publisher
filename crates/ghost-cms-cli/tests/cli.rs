@@ -81,6 +81,69 @@ fn top_help_lists_worked_examples() {
         .stdout(contains("Auto-publish files as you save them"));
 }
 
+#[tokio::test]
+async fn invalid_batch_rejects_every_post_before_network() {
+    let server = MockServer::start().await;
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("first.md"),
+        "---\ntitle: First\nslug: first-post\n---\nText.\n",
+    )
+    .unwrap();
+    std::fs::write(
+        temp.path().join("second.md"),
+        "---\ntitle: Second\nslug: second-post\n---\n![Missing](missing.png)\n",
+    )
+    .unwrap();
+    let result = run(&server, &["publish", temp.path().to_str().unwrap()]).await;
+    assert!(!result.status.success());
+    assert!(server.received_requests().await.unwrap().is_empty());
+}
+
+#[test]
+fn new_preserves_quoted_unicode_metadata_and_rejects_escaping_or_existing_paths() {
+    let temp = tempfile::tempdir().unwrap();
+    let blog = temp.path().join("blog with spaces");
+    let title = "日本旅行: \"中文\"\nA second line";
+    let tag = "Travel, [Japan]";
+    cli()
+        .args([
+            "--blog-dir",
+            blog.to_str().unwrap(),
+            "new",
+            title,
+            "--slug",
+            "quoted-japan-trip",
+            "--tag",
+            tag,
+            "--no-edit",
+        ])
+        .assert()
+        .success();
+    let file = blog.join("posts/quoted-japan-trip.md");
+    let before = std::fs::read_to_string(&file).unwrap();
+    let post = ghost_cms_core::markdown::parse(&before).unwrap();
+    assert_eq!(post.front.title, title);
+    assert_eq!(post.front.tags, vec![tag.to_owned()]);
+    for slug in ["../../outside", "quoted-japan-trip"] {
+        cli()
+            .args([
+                "--blog-dir",
+                blog.to_str().unwrap(),
+                "new",
+                "Another title",
+                "--slug",
+                slug,
+                "--no-edit",
+            ])
+            .assert()
+            .failure();
+    }
+    assert_eq!(std::fs::read_to_string(file).unwrap(), before);
+    assert!(!temp.path().join("outside.md").exists());
+    assert_eq!(std::fs::read_dir(blog.join("posts")).unwrap().count(), 1);
+}
+
 #[test]
 fn publish_help_lists_examples() {
     cli()
@@ -100,6 +163,37 @@ fn missing_token_is_a_friendly_error() {
         .assert()
         .failure()
         .stderr(contains("GHOST_STAFF_TOKEN").or(contains("login")));
+}
+
+#[test]
+fn check_and_preview_work_without_a_site_or_token() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let post = temp.path().join("post.md");
+    std::fs::write(
+        &post,
+        "---\ntitle: 中国語の記事\nslug: chinese-post\n---\n\n## 道順\n\n[戻る](#道順)\n",
+    )?;
+    cli().arg("check").arg(&post).assert().success();
+    let preview = temp.path().join("preview");
+    cli()
+        .arg("preview")
+        .arg(&post)
+        .arg("--output")
+        .arg(&preview)
+        .assert()
+        .success();
+    assert!(preview.join("index.html").is_file());
+    let rendered = std::fs::read_to_string(preview.join("chinese-post/index.html"))?;
+    assert!(rendered.contains("中国語の記事"));
+    assert!(rendered.contains("id=\"道順\""));
+    cli()
+        .arg("preview")
+        .arg(&post)
+        .arg("--output")
+        .arg(&preview)
+        .assert()
+        .failure();
+    Ok(())
 }
 
 // --- rendered output (mocked API) --------------------------------------------

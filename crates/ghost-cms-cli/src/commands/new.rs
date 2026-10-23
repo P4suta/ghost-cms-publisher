@@ -1,5 +1,7 @@
 //! `new` — scaffold a post file from a title.
 
+use std::io::Write as _;
+
 use ghost_cms_shared::text::slugify;
 use miette::IntoDiagnostic;
 
@@ -24,20 +26,26 @@ pub(crate) struct NewArgs {
 }
 
 /// Build the front-matter + body scaffold for a new post.
-fn scaffold(title: &str, slug: &str, tags: &[String]) -> String {
-    let tags_line = if tags.is_empty() {
-        "[]".to_owned()
-    } else {
-        format!("[{}]", tags.join(", "))
-    };
-    format!(
-        "---\ntitle: {title:?}\nslug: {slug}\nstatus: draft\ntags: {tags_line}\nexcerpt: \"\"\n---\n\n# {title}\n\nWrite your post here.\n"
-    )
+fn scaffold(title: &str, slug: &str, tags: &[String]) -> serde_json::Result<String> {
+    let title_yaml = serde_json::to_string(title)?;
+    let tags_yaml = serde_json::to_string(tags)?;
+    Ok(format!(
+        "---\ntitle: {title_yaml}\nslug: {slug}\nstatus: draft\ntags: {tags_yaml}\nexcerpt: \"\"\n---\n\nWrite your post here.\n"
+    ))
 }
 
 impl Command for NewArgs {
-    async fn run(self, ctx: &Ctx) -> miette::Result<()> {
+    fn run(self, ctx: &Ctx) -> impl std::future::Future<Output = miette::Result<()>> {
+        std::future::ready(self.create(ctx))
+    }
+}
+
+impl NewArgs {
+    fn create(self, ctx: &Ctx) -> miette::Result<()> {
         let slug = self.slug.clone().unwrap_or_else(|| slugify(&self.title));
+        ghost_cms_core::frontmatter::FrontMatter::new(self.title.clone(), slug.clone())
+            .validate()
+            .into_diagnostic()?;
         let dir = ctx.settings.blog_dir.join("posts");
         std::fs::create_dir_all(&dir).into_diagnostic()?;
         let path = dir.join(format!("{slug}.md"));
@@ -49,7 +57,17 @@ impl Command for NewArgs {
             ));
         }
 
-        std::fs::write(&path, scaffold(&self.title, &slug, &self.tags)).into_diagnostic()?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .into_diagnostic()?;
+        file.write_all(
+            scaffold(&self.title, &slug, &self.tags)
+                .into_diagnostic()?
+                .as_bytes(),
+        )
+        .into_diagnostic()?;
         ctx.success(&format!("created {}", path.display()));
 
         if !self.no_edit {

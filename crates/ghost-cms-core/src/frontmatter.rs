@@ -82,6 +82,9 @@ pub struct FrontMatter {
     /// Never read or modified by the tool — purely informational.
     #[serde(default)]
     pub source: Option<PathBuf>,
+    /// Content language used by local previews, such as `zh-Hans`.
+    #[serde(default)]
+    pub language: Option<String>,
 }
 
 impl FrontMatter {
@@ -107,13 +110,24 @@ impl FrontMatter {
         if self.title.trim().is_empty() {
             return Err(CoreError::FrontMatter("title must not be empty".to_owned()));
         }
-        if self.slug.trim().is_empty() {
-            return Err(CoreError::FrontMatter("slug must not be empty".to_owned()));
+        if !ghost_cms_policy::valid_slug(self.slug.as_bytes()) {
+            return Err(CoreError::FrontMatter("slug must contain lowercase English words, digits and single internal hyphens, with a letter and at most 64 bytes".to_owned()));
+        }
+        if self.status == PostStatus::Unknown {
+            return Err(CoreError::FrontMatter(
+                "status must be draft, published or scheduled".to_owned(),
+            ));
         }
         if self.status == PostStatus::Scheduled && self.published_at.is_none() {
             return Err(CoreError::FrontMatter(
                 "status: scheduled requires published_at".to_owned(),
             ));
+        }
+        if let Some(date) = &self.published_at {
+            time::OffsetDateTime::parse(date, &time::format_description::well_known::Rfc3339)
+                .map_err(|e| {
+                    CoreError::FrontMatter(format!("published_at must be RFC 3339: {e}"))
+                })?;
         }
         Ok(())
     }

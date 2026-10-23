@@ -1,67 +1,112 @@
-//! Content hashing and the local publish-state cache.
-//!
-//! The cache only lets `publish` skip re-uploading unchanged content; Ghost is
-//! the source of truth, so a missing or corrupt cache just costs a `find_by_slug`.
+//! Content identities and destination-scoped publication receipts.
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::error::Result;
+use crate::error::{CoreError, Result};
+use crate::filesystem::{FileSystem, StateLease};
 
-/// Hash an ordered set of string parts into a hex digest.
-#[must_use]
-pub(crate) fn content_hash(parts: &[&str]) -> String {
+#[derive(Debug)]
+pub(crate) struct ContentDigest(String);
+
+impl fmt::Display for ContentDigest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+pub(crate) fn content_hash(parts: &[&str]) -> ContentDigest {
     let mut hasher = Sha256::new();
     for part in parts {
         hasher.update(part.as_bytes());
-        hasher.update([0u8]); // domain separator between parts
+        hasher.update([0u8]);
     }
-    hex::encode(hasher.finalize())
+    ContentDigest(hex::encode(hasher.finalize()))
 }
 
-/// Recorded state for one published post.
+pub(crate) fn bytes_hash(bytes: &[u8]) -> ContentDigest {
+    ContentDigest(hex::encode(Sha256::digest(bytes)))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct PostState {
-    /// Ghost object id.
     pub(crate) id: String,
-    /// Hash of the content last published.
     pub(crate) content_hash: String,
-    /// Last `updated_at` observed from Ghost.
     pub(crate) updated_at: Option<String>,
 }
 
-/// The on-disk cache, keyed by slug.
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub(crate) struct StateCache {
-    /// Map of slug → recorded state.
+#[serde(deny_unknown_fields)]
+pub(crate) struct SiteState {
+    #[serde(default)]
     pub(crate) posts: BTreeMap<String, PostState>,
+    #[serde(default)]
+    pub(crate) assets: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StateCache {
+    version: u8,
+    pub(crate) sites: BTreeMap<String, SiteState>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    unscoped_legacy: BTreeMap<String, PostState>,
+}
+
+impl Default for StateCache {
+    fn default() -> Self {
+        Self {
+            version: 2,
+            sites: BTreeMap::new(),
+            unscoped_legacy: BTreeMap::new(),
+        }
+    }
 }
 
 impl StateCache {
-    /// Load the cache from `path`; a missing file yields an empty cache.
-    ///
-    /// # Errors
-    /// Returns an error if the file exists but cannot be read or parsed.
-    pub(crate) fn load(path: &Path) -> Result<Self> {
-        match std::fs::read(path) {
-            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(e.into()),
+    pub(crate) fn load(path: &Path, files: &dyn FileSystem) -> Result<Self> {
+        let bytes = match files.read(path) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            },
+            Err(error) => return Err(error.into()),
+        };
+        let value: serde_json::Value = serde_json::from_slice(&bytes)?;
+        if value.get("version").is_none() {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Legacy {
+                posts: BTreeMap<String, PostState>,
+            }
+            let legacy: Legacy = serde_json::from_value(value)?;
+            return Ok(Self {
+                unscoped_legacy: legacy.posts,
+                ..Self::default()
+            });
         }
+        let cache: Self = serde_json::from_value(value)?;
+        if cache.version != 2 {
+            return Err(CoreError::Config(
+                "unsupported publish state version".to_owned(),
+            ));
+        }
+        Ok(cache)
     }
 
-    /// Persist the cache, creating the parent directory if needed.
-    ///
-    /// # Errors
-    /// Returns an error if the directory or file cannot be written.
-    pub(crate) fn save(&self, path: &Path) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(path, serde_json::to_vec_pretty(self)?)?;
+    pub(crate) fn save(&self, path: &Path, files: &dyn FileSystem) -> Result<()> {
+        files.replace_state(path, &serde_json::to_vec_pretty(self)?)?;
         Ok(())
     }
+}
+
+pub(crate) fn lock(path: &Path, files: &dyn FileSystem) -> Result<Box<dyn StateLease>> {
+    files
+        .lock_state(path)
+        .map_err(|e| CoreError::Config(format!("cannot acquire publication state lock: {e}")))
 }

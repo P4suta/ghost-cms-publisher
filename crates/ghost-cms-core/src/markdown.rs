@@ -15,16 +15,35 @@ pub struct ParsedPost {
     pub body_md: String,
 }
 
-/// Convert a `serde_yaml_ng` error into a [`CoreError`], attaching the absolute
-/// byte offset within the original file when a location is available.
-fn frontmatter_syntax_error(e: &serde_yaml_ng::Error, yaml_start: usize) -> CoreError {
-    e.location().map_or_else(
+/// Convert a YAML error into a [`CoreError`], attaching the absolute byte offset within the original file when a location is available.
+fn frontmatter_syntax_error(e: &serde_saphyr::Error, yaml_start: usize, yaml: &str) -> CoreError {
+    let location = e.location().and_then(|loc| {
+        let line = usize::try_from(loc.line()).ok()?;
+        let column = usize::try_from(loc.column()).ok()?;
+        let byte = if let Some(byte) = loc.span().byte_offset() {
+            usize::try_from(byte).ok()?
+        } else {
+            let line_start = yaml
+                .split_inclusive('\n')
+                .take(line.checked_sub(1)?)
+                .try_fold(0usize, |sum, text| sum.checked_add(text.len()))?;
+            let current = yaml.get(line_start..)?.split('\n').next()?;
+            let column_byte = current
+                .char_indices()
+                .map(|(byte, _)| byte)
+                .chain(std::iter::once(current.len()))
+                .nth(column.checked_sub(1)?)?;
+            line_start.checked_add(column_byte)?
+        };
+        Some((yaml_start.checked_add(byte)?, line, column))
+    });
+    location.map_or_else(
         || CoreError::FrontMatter(format!("invalid YAML frontmatter: {e}")),
-        |loc| CoreError::FrontMatterSyntax {
+        |(offset, line, column)| CoreError::FrontMatterSyntax {
             message: e.to_string(),
-            offset: yaml_start + loc.index(),
-            line: loc.line(),
-            column: loc.column(),
+            offset,
+            line,
+            column,
         },
     )
 }
@@ -78,7 +97,7 @@ pub fn parse(input: &str) -> Result<ParsedPost> {
     // in lengths; `yaml` begins at the same offset.
     let yaml_start = input.len() - after_open.len();
     let front: FrontMatter =
-        serde_yaml_ng::from_str(yaml).map_err(|e| frontmatter_syntax_error(&e, yaml_start))?;
+        serde_saphyr::from_str(yaml).map_err(|e| frontmatter_syntax_error(&e, yaml_start, yaml))?;
     front.validate()?;
 
     Ok(ParsedPost {

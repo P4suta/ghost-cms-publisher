@@ -1,0 +1,13 @@
+[package]
+name = "ghost-cms-policy"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Deterministic publication decisions and portable slug contracts."
+publish = false
+
+[lints]
+workspace = true

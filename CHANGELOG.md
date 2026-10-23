@@ -6,7 +6,29 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Maintained b
 
 ## [Unreleased]
 
+### Added
+
+- Offline `check` and `preview` commands for complete Markdown collections.
+- Visible captions from Markdown image text and media labels, native video/audio players, and paired video posters.
+- Bookmark cards from standalone descriptive links, with authored descriptions and ordinary-link fallbacks.
+- Shared validation for article links, heading fragments, local media, duplicate slugs, and publication metadata before network operations.
+- Source-bound policy proofs and a disposable Ghost publication rehearsal with content and media readback.
+
 ### Changed
+
+- Require English slugs with lowercase letters, digits, single internal hyphens, and at most 64 bytes.
+- Preserve heading identifiers, tables, and code through a Ghost HTML card, with local Markdown as the editable source.
+- Replace the YAML parser with deserialize-only serde-saphyr and remove unused Comrak features.
+- Scope publication receipts and uploaded media to each destination, write state atomically, and refuse simultaneous state writes.
+
+### Fixed
+
+- Refuse invalid batches before the first network request and remote edits before uploads.
+- Reuse completed media uploads after a failed post write and skip unchanged local media.
+- Preserve quoted multilingual scaffold metadata and refuse escaping or existing destination paths.
+- Apply the Starter-compatible upload ceiling as 5,000,000 bytes.
+- Reject article route templates that escape the configured site or contain control characters.
+- Update affected TLS/HTTP dependencies and replace a yanked transitive release.
 
 - Updated dependencies to current major versions: comrak 0.52, jsonwebtoken 10
   (pure-Rust `rust_crypto` backend), rmcp 2.0, toml 1, sha2 0.11, inquire 0.9,

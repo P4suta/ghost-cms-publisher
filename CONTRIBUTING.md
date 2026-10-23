@@ -1,59 +1,63 @@
 # Contributing
 
-Local setup, quality gates, and how releases work.
-
-## Development setup
-
-Tooling is pinned with [mise](https://mise.jdx.dev/) and tasks run through
-[just](https://github.com/casey/just):
+Use the exact tools in `mise.toml` and the command surface in `Justfile`.
 
 ```sh
-mise install     # installs just, lefthook, typos, taplo, nextest, deny, ...
-just hooks       # installs the git hooks (lefthook)
-just build
-just test
+mise install
+mise x -- just hooks
+mise x -- just build
+mise x -- just lint
+mise x -- just test
 ```
 
-`ghost-cms-core` holds all Ghost/Admin-API logic; `ghost-cms-shared` is the app
-layer; `ghost-cms-cli` and `ghost-cms-mcp` are thin I/O adapters. Please keep new
-logic in the layer where it belongs.
+## Boundaries
 
-## Quality gates
+`ghost-cms-policy` holds dependency-free publication decisions and slug validation.
+`ghost-cms-core` prepares collections and implements Ghost API operations behind an HTTP transport.
+`ghost-cms-shared` supplies application projections and configuration.
+Its native filesystem adapter implements the core's file capability without introducing filesystem effects into the core.
+The CLI and MCP binaries own user interaction and process exits.
+`ghost-cms-xtask` verifies proof identities and rehearses publication against a disposable local Ghost instance.
 
-The same checks run locally (via lefthook + `just`) and in CI. Before opening a
-PR, make sure these pass:
+Keep Markdown authoritative and preserve literal code during rendering.
+Validate a complete batch before network operations.
+Keep state scoped to its normalized destination and retain Ghost's conflict token on updates.
+See the [publication ADR](docs/adr/prepare-publications-before-remote-writes.md) and [usage guide](docs/usage.md).
+
+## Verification
+
+`just lint` checks formatting, Clippy, dependency policy, spelling, unused dependencies, and the source-bound proof receipt.
+`just test` runs the workspace tests through Nextest and then checks documentation tests.
+`just audit` checks the existing local RustSec advisory snapshot.
+Update that snapshot separately when an online advisory refresh is intended.
+
+The additional CI gates use `taplo fmt --check`, `cargo sort --workspace --grouped --check`, Rust 1.95, documentation warnings, and Linux/macOS/Windows tests.
+The local rehearsal requires Docker and the pinned Ghost image in the xtask.
+It creates an owned network and container, binds Ghost only on loopback, uses temporary credentials and storage, checks returned content and local media, repeats publication, and removes its resources.
+SMTP points to an unused container-local port.
+The container has its own bridge network; normal Ghost startup may contact its upstream services.
+No production Ghost configuration is read by this command.
 
 ```sh
-just lint    # fmt --check, clippy -D warnings, cargo-deny, typos, machete
-just test    # nextest + doctests
+mise x -- just rehearse blog/posts/
+mise x -- just proofs
 ```
 
-CI additionally enforces: `taplo fmt --check`, `cargo sort --check`, an MSRV
-build (Rust 1.95), `cargo doc` with `-D warnings`, and the test suite on Linux,
-macOS, and Windows. Run the individual commands from the plan if a CI job fails
-on a platform you don't have.
+`just proofs` uses the configured bounded proof image with Kani 0.68.0 and CBMC 6.11.0.
+The owner-side runner applies memory, CPU, process, and deadline limits.
+A limit stop is inconclusive.
+The [proof receipt](docs/proof-receipt.json) records the measured results for the exact policy source and manifest.
+`verify-evidence` checks that receipt's identities and inventory; it does not run Kani or independently certify the recorded verdict.
+When the policy changes, run both proofs and update the receipt with their actual results before relying on it.
+The receipt regression test rejects changed source, changed configuration inputs, failed verdicts, and an empty inventory.
+Parser, filesystem, HTTP, and Ghost conversion behavior use fixtures and real integration checks rather than a theorem about those external systems.
 
-### Snapshot tests
+The generated README and license files come from `repository.toml` through `dotfiles repository generate`.
+Keep detailed documentation in `docs/`.
 
-CLI output is covered by [insta](https://insta.rs/) snapshots. If you change
-rendered output intentionally:
+## Contributions and releases
 
-```sh
-cargo insta review   # accept or reject the new snapshots
-```
-
-## Commit messages
-
-We use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`,
-`fix:`, `docs:`, `ci:`, …); see `committed.toml` for the allowed types. The
-`commit-msg` hook and the `commitlint` CI job enforce this. PR titles must also
-follow the convention — they become the squash-merge commit and feed the
-changelog.
-
-## Releases
-
-Releases are automated with [release-plz](https://release-plz.dev/): merged
-Conventional Commits accumulate into a "Release PR" that bumps the version and
-updates `CHANGELOG.md`. Merging that PR (after adding the `release: approved`
-label) tags `v{version}`, which triggers the release workflow to build and
-publish the cross-platform binaries. No crate is published to crates.io.
+Use Conventional Commits and keep each pull request within its linked issue.
+Snapshot changes require an intentional review through `cargo insta review`.
+The existing release-plz workflow proposes version updates and release publication remains protected by the repository's release approval flow.
+No crate in this workspace is published to crates.io.

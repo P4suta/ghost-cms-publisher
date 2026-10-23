@@ -5,9 +5,10 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use ghost_cms_core::Ghost;
-use ghost_cms_core::publish::{PublishOptions, publish_file};
+use ghost_cms_core::publish::PublishOptions;
 use ghost_cms_core::transport::ReqwestTransport;
 use ghost_cms_shared::error::Error;
+use ghost_cms_shared::filesystem::publish_file;
 use ghost_cms_shared::paths::state_path;
 use ghost_cms_shared::render::outcome_line;
 use miette::IntoDiagnostic;
