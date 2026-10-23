@@ -58,15 +58,22 @@ Changes to parser versions, rendering rules, persistence adapters, or supported 
 
 ## Dependencies and credentials
 
-The complete dependency policy check passed with the existing local RustSec snapshot at revision `640bf5a9f06e66d8721e8772766531fe77c8630d`.
+The complete dependency policy check passed with a clean RustSec database at revision `f7b2f6bc663452200bbe639ebb75e0c762b3422b`.
+The audit configuration used the repository policy with only `advisories.db-path` changed to an isolated database directory.
 
 ```sh
-mise x -- cargo deny -L error --offline --locked check advisories bans licenses sources
+mise x -- cargo deny -L error --config /path/to/isolated-deny.toml --offline --locked check advisories bans licenses sources
 ```
 
 Unused Comrak CLI and syntax-highlighting features were removed.
 The YAML parser now uses deserialize-only serde-saphyr 2.0.0.
 The lockfile updates the affected TLS/HTTP dependencies and a yanked spin release.
+The bundled trust store resolves to `webpki-roots` 1.0.10, which removes the root covered by [RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381.html).
+The previous 1.0.8 lockfile failed this advisory check with the same database before the update.
+The `rmcp` crate and its macros resolve to 2.2.0, including the fix described in the [client transport advisory](https://github.com/advisories/GHSA-9g45-5xwm-f3wc).
+The enabled features use the stdio server transport.
+A real stdio session completed initialization, listed nine tools, rejected an invalid slug, and shut down successfully on input closure.
+The session used dummy credentials and an unused loopback destination.
 The existing RSA advisory exception remains narrow: authentication uses HS256 and never calls RSA operations.
 This result describes the recorded advisory snapshot rather than an online refresh.
 Gitleaks 8.30.1 found no credentials in the workspace's Rust source and tests.

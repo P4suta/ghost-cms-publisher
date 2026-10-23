@@ -23,6 +23,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Maintained b
 
 ### Fixed
 
+- Update the bundled TLS trust store to webpki-roots 1.0.10 for RUSTSEC-2026-0381.
+- Update `rmcp` and its macros to 2.2.0 for the disclosed HTTP client transport issue.
 - Refuse invalid batches before the first network request and remote edits before uploads.
 - Reuse completed media uploads after a failed post write and skip unchanged local media.
 - Preserve quoted multilingual scaffold metadata and refuse escaping or existing destination paths.
