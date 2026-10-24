@@ -15,7 +15,8 @@
       "matchStrings": [
         "const IMAGE: &str =\\s*\"(?<depName>ghost):(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+-alpine)@(?<currentDigest>sha256:[a-f0-9]{64})\";"
       ],
-      "datasourceTemplate": "docker"
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     }
   ]
 }
