@@ -61,6 +61,15 @@ Parser, filesystem, HTTP, and Ghost conversion behavior use fixtures and real in
 The generated README and license files come from `repository.toml` through `dotfiles repository generate`.
 Keep detailed documentation in `docs/`.
 
+## Dependency updates
+
+`renovate.json` extends the shared [Renovate policy](https://github.com/P4suta/renovate-config).
+Built-in managers cover Cargo, GitHub Actions, mise tools, and the Rust toolchain.
+Two custom managers cover the CI manifest sorter and the Ghost image used by the rehearsal.
+Keep the image's version tag and digest together so updates retain the Alpine variant and expose major version changes.
+The proof image remains part of the source-bound proof evidence and follows the proof verification process.
+Validate configuration changes with `renovate-config-validator --strict` and inspect `renovate --platform=local --dry-run=extract` before merging.
+
 ## Contributions and releases
 
 Use Conventional Commits and keep each pull request within its linked issue.

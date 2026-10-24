@@ -23,7 +23,8 @@ use percent_encoding::percent_decode_str;
 use scraper::{Html, Selector};
 use serde::Deserialize;
 
-const IMAGE: &str = "ghost@sha256:cd617a0901e659cda978b9063f449535d105f5f1a0340ffac415db2c42d22606";
+const IMAGE: &str =
+    "ghost:6.72.0-alpine@sha256:cd617a0901e659cda978b9063f449535d105f5f1a0340ffac415db2c42d22606";
 const READY_ATTEMPTS: u16 = 120;
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
