@@ -1,13 +1,13 @@
 # Local verification
 
 Checked on 2026-10-24 with Rust 1.99.1 and the tools in `mise.toml`.
-These results cover the implementation associated with [issue 27](https://github.com/P4suta/ghost-cms-publisher/issues/27).
+These results cover the scheduling implementation in [issue 27](https://github.com/P4suta/ghost-cms-publisher/issues/27) and the video card correction in [issue 29](https://github.com/P4suta/ghost-cms-publisher/issues/29).
 
 ## Executable contracts
 
 The workspace tests cover front matter, offline collection preparation, CLI output, HTTP requests, preview cleanup, media changes, and upload retry.
 They also check destination-scoped receipts, corrupt state, concurrent state access, explicit remote overrides, and invalid batches before network access.
-All 85 workspace tests passed, followed by the workspace documentation tests.
+All 91 workspace tests passed, followed by the workspace documentation tests.
 The scheduling fixtures cover metadata corrections before freezing, foreign slug and page collisions, changed remote revisions, interrupted writes, retry adoption, and preservation of completed publication times.
 The editor readback regression rejects empty native containers and ignores them beside a complete HTML card.
 Native text nested inside links and documents containing only native media or code cards remain accepted.
@@ -39,7 +39,7 @@ Linux and Windows runtime checks remain the existing CI matrix's responsibility.
 Kani 0.68.0 with the C Bounded Model Checker (CBMC) 6.11.0 proved the production policy crate as Linux amd64.
 The image was `dotfiles-proofs@sha256:8e8c3716a29370da1603df5251d7db4ea1e28479ef96265ae5ee9ce0cc46a42a`.
 The runner bounded each invocation to 2 GiB memory, no extra swap, two CPUs, 256 processes, and 900 seconds.
-All five harnesses completed successfully within those limits.
+All seven harnesses completed successfully within those limits.
 
 | Harness | Domain | Result |
 | --- | --- | --- |
@@ -48,8 +48,10 @@ All five harnesses completed successfully within those limits.
 | `release_start_is_future_aligned_and_after_registered_posts` | Arbitrary unsigned epoch values and the last completed time | 64 checks, zero failures, three covers satisfied |
 | `release_slots_are_monotonic_without_overflow` | Arbitrary unsigned start times and slot indexes | 39 checks, zero failures, two covers satisfied |
 | `registration_decisions_preserve_completed_and_uncertain_writes` | All local entry and remote observation variants | 69 checks, zero failures, three covers satisfied |
+| `video_shapes_preserve_positive_measurements` | All unsigned dimensions and millisecond durations | 64 checks, zero failures, three covers satisfied |
+| `metadata_writes_never_unpublish_or_reschedule_posts` | All supported and unknown publication state pairs | 31 checks, zero failures, three covers satisfied |
 
-The policy source SHA-256 is `622ad3f5f399f3c47149006c65fb6849d1b810f614c4cf2cd0718c616a8f81d5`.
+The policy source SHA-256 is `2997b983fac2372b0439e16654a46a154df2e49805708c39adffb05a1cc9f95a`.
 The policy manifest SHA-256 is `82189adef6e96c3e8238684f7e29e02d1f373d3c13d31a8eab7ee49319a0fde4`.
 The machine-readable [receipt](proof-receipt.json) binds the results to those inputs and verifier settings.
 The fast gate rejects a stale source or manifest, failed verdict, unexpected configuration, or incomplete inventory.
@@ -59,7 +61,7 @@ Its failure fixture injects a final preview identity error and requires cleanup 
 Receipt validation checks recorded evidence.
 It can't replace running the prover after a policy change.
 
-These proofs establish the decision and slug properties within their stated domains.
+These proofs establish the decision, measurement, and slug properties within their stated domains.
 They assume the adapter accurately observes remote IDs, revisions, and content identities.
 They don't prove Markdown/YAML parsers, operating-system persistence and locking, HTTP servers, or Ghost's content conversion.
 Known-answer fixtures and the real Ghost rehearsal check those boundaries.
@@ -104,4 +106,9 @@ The scheduling rehearsal verified all 125 scheduled posts, repeated the same reg
 Scheduling writes changed status and publication time without selecting a newsletter.
 The owned container and network were absent after completion.
 This checks returned Ghost HTML and HTTP resources rather than a production theme's presentation or a browser's decoder.
+The video correction then passed the complete 125-post rehearsal with 1,070 checked local media URLs and twelve populated native video cards.
+The fixture deliberately removed video metadata from scheduled and published posts to reproduce the empty editor selector.
+Its preview changed no remote document or revision.
+The applied repair kept publication states and times, passed complete readback, skipped an unchanged second repair, and rejected a later changed caption.
+The native decoder measured the real files and generated frame thumbnails without changing their bytes.
 Inspection of the pinned image's `ghost_head` helper confirmed that normal helper output includes the packaged card assets without requiring a native bookmark node.

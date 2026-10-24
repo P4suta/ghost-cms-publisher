@@ -1,5 +1,7 @@
 //! Native filesystem adapter for local preparation and publication.
 
+mod video;
+
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -20,6 +22,9 @@ struct LocalLease {
 impl StateLease for LocalLease {}
 
 impl FileSystem for LocalFiles {
+    fn prepare_video(&self, path: &Path) -> Result<ghost_cms_core::video::VideoMetadata> {
+        video::prepare(path)
+    }
     fn canonicalize(&self, path: &Path) -> io::Result<PathBuf> {
         std::fs::canonicalize(path)
     }

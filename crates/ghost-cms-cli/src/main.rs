@@ -93,6 +93,7 @@ async fn dispatch(command: Command, ctx: &Ctx) -> miette::Result<()> {
         Command::New(a) => a.run(ctx).await,
         Command::Publish(a) => a.run(ctx).await,
         Command::Schedule(a) => a.run(ctx).await,
+        Command::Video(a) => a.run(ctx).await,
         Command::List(a) => a.run(ctx).await,
         Command::Get(a) => a.run(ctx).await,
         Command::Open(a) => a.run(ctx).await,

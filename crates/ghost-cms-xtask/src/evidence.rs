@@ -73,6 +73,14 @@ fn verify(receipt: &Receipt, source: &[u8], manifest: &[u8]) -> Result<()> {
             "registration_decisions_preserve_completed_and_uncertain_writes",
             REGISTRATION_COVERS,
         ),
+        (
+            "video_shapes_preserve_positive_measurements",
+            DECISION_COVERS,
+        ),
+        (
+            "metadata_writes_never_unpublish_or_reschedule_posts",
+            DECISION_COVERS,
+        ),
     ];
     ensure!(
         receipt.results.len() == expected.len(),

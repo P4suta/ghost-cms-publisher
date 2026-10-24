@@ -12,6 +12,28 @@ pub struct Posts<'a, T: HttpTransport> {
 }
 
 impl<T: HttpTransport> Posts<'_, T> {
+    /// Replace only the editor document using optimistic revision detection.
+    /// # Errors
+    /// Returns invalid-size, transport, and revision-conflict errors.
+    pub async fn update_editor(&self, id: &str, updated_at: &str, lexical: &str) -> Result<Post> {
+        let payload = serde_json::json!({"posts":[{"updated_at":updated_at,"lexical":lexical}]});
+        let size = serde_json::to_vec(&payload)?.len() as u64;
+        if size > MAX_PAYLOAD_BYTES {
+            return Err(CoreError::TooLarge {
+                size,
+                limit: MAX_PAYLOAD_BYTES,
+            });
+        }
+        let mut request = self.ctx.request(Method::Put, &format!("posts/{id}/"))?;
+        request.query = vec![
+            ("formats".to_owned(), "html,lexical".to_owned()),
+            ("save_revision".to_owned(), "true".to_owned()),
+        ];
+        request.body = json_body(&payload)?;
+        self.ctx
+            .fetch_one::<PostsResponse>(request, Resource::Post, Operation::Update)
+            .await
+    }
     /// Check whether a static page already owns a candidate slug.
     /// # Errors
     /// Returns lookup and response errors.
@@ -111,9 +133,16 @@ impl<T: HttpTransport> Posts<'_, T> {
     pub async fn get(&self, id: &str) -> Result<Post> {
         let mut req = self.ctx.request(Method::Get, &format!("posts/{id}/"))?;
         req.query = vec![("formats".to_owned(), "html,lexical".to_owned())];
-        self.ctx
+        let post: Post = self
+            .ctx
             .fetch_one::<PostsResponse>(req, Resource::Post, Operation::Fetch)
-            .await
+            .await?;
+        if post.id != id {
+            return Err(CoreError::Inconsistent(
+                "post lookup returned a different remote identity".to_owned(),
+            ));
+        }
+        Ok(post)
     }
 
     /// `POST /posts/?source=html`

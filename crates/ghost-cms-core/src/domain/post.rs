@@ -210,6 +210,7 @@ impl Post {
         };
         let document: EditorDocument =
             serde_json::from_str(self.lexical.as_deref().ok_or_else(invalid)?)?;
+        crate::video::editor_videos(self.lexical.as_deref().ok_or_else(invalid)?)?;
         if document.root.kind != "root" || document.root.children.is_empty() {
             return Err(invalid());
         }

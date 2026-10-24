@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-23",
-  "source_sha256": "622ad3f5f399f3c47149006c65fb6849d1b810f614c4cf2cd0718c616a8f81d5",
+  "date": "2026-10-24",
+  "source_sha256": "2997b983fac2372b0439e16654a46a154df2e49805708c39adffb05a1cc9f95a",
   "manifest_sha256": "82189adef6e96c3e8238684f7e29e02d1f373d3c13d31a8eab7ee49319a0fde4",
   "kani": "0.68.0",
   "cbmc": "6.11.0",
@@ -12,6 +12,8 @@
     "publication_decisions_preserve_receipts_and_conflicts": { "checks": 57, "failures": 0, "covers": 3 },
     "release_start_is_future_aligned_and_after_registered_posts": { "checks": 64, "failures": 0, "covers": 3 },
     "release_slots_are_monotonic_without_overflow": { "checks": 39, "failures": 0, "covers": 2 },
-    "registration_decisions_preserve_completed_and_uncertain_writes": { "checks": 69, "failures": 0, "covers": 3 }
+    "registration_decisions_preserve_completed_and_uncertain_writes": { "checks": 69, "failures": 0, "covers": 3 },
+    "video_shapes_preserve_positive_measurements": { "checks": 64, "failures": 0, "covers": 3 },
+    "metadata_writes_never_unpublish_or_reschedule_posts": { "checks": 31, "failures": 0, "covers": 3 }
   }
 }

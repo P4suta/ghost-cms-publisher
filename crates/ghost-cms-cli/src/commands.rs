@@ -15,5 +15,6 @@ pub(crate) mod publish;
 pub(crate) mod schedule;
 pub(crate) mod tags;
 pub(crate) mod upload;
+pub(crate) mod video;
 pub(crate) mod watch;
 pub(crate) mod whoami;

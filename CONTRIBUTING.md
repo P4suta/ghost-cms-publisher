@@ -33,6 +33,7 @@ Update that snapshot separately when an online advisory refresh is intended.
 
 The additional CI gates use `taplo fmt --check`, `cargo sort --workspace --grouped --check`, Rust 1.95, documentation warnings, and Linux/macOS/Windows tests.
 The local rehearsal requires Docker and the pinned Ghost image in the xtask.
+Collections with local video files also need FFmpeg and ffprobe on `PATH`.
 It creates an owned network and container, binds Ghost only on loopback, uses temporary credentials and storage, checks returned content and local media, repeats publication, and removes its resources.
 SMTP points to an unused container-local port.
 The container has its own bridge network; normal Ghost startup may contact its upstream services.
@@ -41,6 +42,7 @@ No production Ghost configuration is read by this command.
 ```sh
 mise x -- just rehearse blog/posts/
 mise x -- just rehearse blog/posts/ --include-scheduling
+mise x -- just rehearse blog/posts/ --include-video-repair
 mise x -- just proofs
 ```
 
@@ -49,7 +51,8 @@ The owner-side runner applies memory, CPU, process, and deadline limits.
 A limit stop is inconclusive.
 The [proof receipt](docs/proof-receipt.json) records the measured results for the exact policy source and manifest.
 `verify-evidence` checks that receipt's identities and inventory; it does not run Kani or independently certify the recorded verdict.
-When the policy changes, run all five proofs and update the receipt with their actual results before relying on it.
+When the policy changes, run all registered proofs and update the receipt with their actual results before relying on it.
+The video repair rehearsal needs at least two video posts and checks both scheduled and published states.
 The scheduling rehearsal also verifies complete draft receipts, a frozen release plan, an unchanged repeat registration, and a real scheduled-to-published transition.
 Its container listens on the same loopback port that Ghost advertises so internal scheduler callbacks reach the server.
 The receipt regression test rejects changed source, changed configuration inputs, failed verdicts, and an empty inventory.

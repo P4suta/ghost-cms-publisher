@@ -116,20 +116,25 @@ fn preview_post(
     assets: &BTreeMap<String, String>,
     routes: &BTreeMap<String, String>,
 ) -> Result<String> {
-    let html = render_with_urls(&post.body_md, post.allow_raw_html, |original| {
-        let target = post.rewrites.get(original).map_or(original, String::as_str);
-        let (route, fragment) = target.split_once('#').map_or((target, ""), |(p, f)| (p, f));
-        routes.get(route).map_or_else(
-            || replace_asset(target, assets),
-            |replacement| {
-                if fragment.is_empty() {
-                    replacement.clone()
-                } else {
-                    format!("{replacement}#{fragment}")
-                }
-            },
-        )
-    })?;
+    let html = render_with_urls(
+        &post.body_md,
+        post.allow_raw_html,
+        &post.videos,
+        |original| {
+            let target = post.rewrites.get(original).map_or(original, String::as_str);
+            let (route, fragment) = target.split_once('#').map_or((target, ""), |(p, f)| (p, f));
+            routes.get(route).map_or_else(
+                || replace_asset(target, assets),
+                |replacement| {
+                    if fragment.is_empty() {
+                        replacement.clone()
+                    } else {
+                        format!("{replacement}#{fragment}")
+                    }
+                },
+            )
+        },
+    )?;
     let mut tags = String::new();
     for tag in &post.front.tags {
         tags.push_str("<span>");

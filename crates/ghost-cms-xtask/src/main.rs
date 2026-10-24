@@ -2,6 +2,8 @@
 
 /// Source-bound verification receipts.
 pub mod evidence;
+/// Native editor metadata boundary rehearsal.
+pub mod video;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -62,6 +64,9 @@ enum Action {
         /// Rehearse staged release plans and one real scheduled-to-published transition.
         #[arg(long)]
         include_scheduling: bool,
+        /// Exercise video metadata repairs with scheduled and published posts.
+        #[arg(long, conflicts_with = "include_scheduling")]
+        include_video_repair: bool,
     },
 }
 
@@ -352,7 +357,12 @@ fn create_environment(name: &str, port: u16) -> Result<Environment> {
     })
 }
 
-async fn rehearse(files: Vec<PathBuf>, port: u16, include_scheduling: bool) -> Result<()> {
+async fn rehearse(
+    files: Vec<PathBuf>,
+    port: u16,
+    include_scheduling: bool,
+    include_video_repair: bool,
+) -> Result<()> {
     ensure!(port != 0, "a fixed nonzero loopback port is required");
     let files = ghost_cms_shared::paths::expand_inputs(&files)?;
     let collection =
@@ -384,10 +394,11 @@ async fn rehearse(files: Vec<PathBuf>, port: u16, include_scheduling: bool) -> R
     })?;
     let client = Ghost::new(&config)?;
     let drafts = temp.path().join("drafts.json");
-    if include_scheduling {
+    let staged = include_scheduling || include_video_repair;
+    if staged {
         stage_drafts(&client, &collection, &drafts, origin, false).await?;
     }
-    let cache = if include_scheduling {
+    let cache = if staged {
         drafts.with_extension("publication-cache.json")
     } else {
         temp.path().join("state.json")
@@ -396,7 +407,7 @@ async fn rehearse(files: Vec<PathBuf>, port: u16, include_scheduling: bool) -> R
         state_path: Some(cache),
         ..PublishOptions::default()
     };
-    let pages = publish_and_readback(&client, &collection, &options, include_scheduling).await?;
+    let pages = publish_and_readback(&client, &collection, &options, staged).await?;
     let checked_media = verify_pages(&http, origin, &pages).await?;
     for prepared in collection.posts() {
         ensure!(
@@ -412,6 +423,9 @@ async fn rehearse(files: Vec<PathBuf>, port: u16, include_scheduling: bool) -> R
         "Verified {} posts, {checked_media} local media URLs, preserved text/code/tables/fragments, and an unchanged second publication.",
         pages.len()
     ));
+    if include_video_repair {
+        video::rehearse(&client, &drafts, temp.path()).await?;
+    }
     if include_scheduling {
         rehearse_schedule(
             &client,
@@ -678,8 +692,9 @@ async fn main() -> Result<()> {
             files,
             port,
             include_scheduling,
+            include_video_repair,
         } => tokio::select! {
-            result = rehearse(files, port, include_scheduling) => result,
+            result = rehearse(files, port, include_scheduling, include_video_repair) => result,
             signal = tokio::signal::ctrl_c() => { signal?; anyhow::bail!("rehearsal interrupted; verification is inconclusive") },
             () = tokio::time::sleep(REHEARSAL_DEADLINE) => anyhow::bail!("rehearsal exceeded its diagnostic deadline; verification is inconclusive"),
         },

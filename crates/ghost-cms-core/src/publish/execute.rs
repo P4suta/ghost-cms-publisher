@@ -33,6 +33,12 @@ pub(super) async fn execute<T: HttpTransport>(
     {
         return Err(CoreError::Inconsistent("post write returned an unexpected identity, revision or status; inspect Ghost before retrying".to_owned()));
     }
+    let patches = prepared.video_patches(&urls)?;
+    let post = if patches.is_empty() {
+        post
+    } else {
+        crate::video::synchronize(client, post, &patches).await?
+    };
     cache
         .sites
         .entry(client.cache_namespace().to_owned())

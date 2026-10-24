@@ -109,6 +109,56 @@ async fn update_post_sends_updated_at_for_conflict_detection() {
 }
 
 #[tokio::test]
+async fn post_lookup_refuses_a_different_remote_identity() -> Result<(), Box<dyn std::error::Error>>
+{
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/ghost/api/admin/posts/owned/"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "posts":[{"id":"foreign","slug":"video-post","status":"draft"}]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    assert!(client(&server).posts().get("owned").await.is_err());
+    Ok(())
+}
+
+#[tokio::test]
+async fn editor_updates_preserve_publication_settings_and_detect_conflicts()
+-> Result<(), Box<dyn std::error::Error>> {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/ghost/api/admin/posts/p1/"))
+        .and(query_param("formats", "html,lexical"))
+        .and(query_param("save_revision", "true"))
+        .respond_with(ResponseTemplate::new(409).set_body_json(serde_json::json!({
+            "errors":[{"message":"Post was modified","type":"UpdateCollisionError"}]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let lexical = "{\"root\":{\"type\":\"root\",\"children\":[]}}";
+    assert!(
+        client(&server)
+            .posts()
+            .update_editor("p1", "2026-10-24T00:00:00.000Z", lexical)
+            .await
+            .is_err()
+    );
+    let requests = server.received_requests().await.ok_or("missing requests")?;
+    assert_eq!(requests.len(), 1);
+    let request = &requests[0];
+    assert!(!request.url.query_pairs().any(|(key, _)| key == "source"));
+    let body: serde_json::Value = serde_json::from_slice(&request.body)?;
+    assert_eq!(
+        body,
+        serde_json::json!({"posts":[{"updated_at":"2026-10-24T00:00:00.000Z","lexical":lexical}]})
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn api_error_is_mapped_from_ghost_errors_envelope() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

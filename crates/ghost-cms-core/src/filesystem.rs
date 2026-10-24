@@ -21,6 +21,14 @@ pub trait StateLease: Send {}
 
 /// Local I/O boundary shared by preparation, preview, and publication.
 pub trait FileSystem: std::fmt::Debug + Send + Sync {
+    /// Measure a local video and extract a JPEG frame without changing the source.
+    /// # Errors
+    /// Returns unavailable decoder, invalid media, or extraction errors.
+    fn prepare_video(&self, _path: &Path) -> crate::Result<crate::video::VideoMetadata> {
+        Err(crate::CoreError::Config(
+            "this file adapter cannot prepare video thumbnails".to_owned(),
+        ))
+    }
     /// Resolve a path to its canonical identity.
     /// # Errors
     /// Returns path resolution errors.

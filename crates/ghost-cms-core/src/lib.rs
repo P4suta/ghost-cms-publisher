@@ -27,6 +27,7 @@ pub mod preparation;
 pub mod publish;
 pub mod schedule;
 pub mod transport;
+pub mod video;
 
 pub(crate) mod auth;
 pub(crate) mod hash;

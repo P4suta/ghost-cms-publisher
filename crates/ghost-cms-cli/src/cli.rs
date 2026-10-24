@@ -155,6 +155,8 @@ pub(crate) enum Command {
     Publish(commands::publish::PublishArgs),
     /// Prepare drafts, freeze a release plan, and resume scheduled web publication.
     Schedule(commands::schedule::ScheduleArgs),
+    /// Inspect or repair native video card metadata in owned posts.
+    Video(commands::video::VideoArgs),
     /// List recent posts.
     List(commands::list::ListArgs),
     /// Fetch one post by slug.
