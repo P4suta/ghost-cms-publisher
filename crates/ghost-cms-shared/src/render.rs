@@ -130,6 +130,7 @@ pub fn post_value(post: &Post) -> Value {
         "url": post.url,
         "updated_at": post.updated_at,
         "html": post.html,
+        "lexical": post.lexical,
         "feature_image": post.feature_image,
         "feature_image_alt": post.feature_image_alt,
         "feature_image_caption": post.feature_image_caption,

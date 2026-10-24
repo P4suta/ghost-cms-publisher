@@ -5,6 +5,7 @@ use comrak::{Options, format_html};
 use scraper::{Html, Selector};
 use serde::Serialize;
 
+use crate::video::{MILLISECONDS_PER_SECOND, SECONDS_PER_MINUTE};
 use crate::{CoreError, Result};
 
 const GENERATED_HTML_BLOCK_TYPE: u8 = 6;
@@ -106,21 +107,34 @@ fn media_figure<'a>(
     url: &str,
     kind: MediaKind,
     poster: Option<&str>,
+    metadata: Option<&crate::video::Presentation>,
     options: &Options<'_>,
 ) -> Result<String> {
     let label = escape(&comrak::html::collect_text(node));
     let fallback = render_node(node, options)?;
     Ok(match kind {
         MediaKind::Video => {
-            let thumbnail = poster
-                .map(|url| format!(" data-kg-thumbnail=\"{}\"", escape(url)))
+            let metadata = metadata.ok_or_else(|| {
+                CoreError::FrontMatter(
+                    "native video cards require measured local metadata".to_owned(),
+                )
+            })?;
+            let custom = poster
+                .map(|url| format!(" data-kg-custom-thumbnail=\"{}\"", escape(url)))
                 .unwrap_or_default();
-            let poster = poster
-                .map(|url| format!(" poster=\"{}\"", escape(url)))
-                .unwrap_or_default();
+            let poster = format!(
+                " poster=\"{}\"",
+                escape(poster.unwrap_or(&metadata.thumbnail))
+            );
+            let width = metadata.metadata.shape.width();
+            let height = metadata.metadata.shape.height();
+            let seconds = (metadata.metadata.shape.duration_ms() / MILLISECONDS_PER_SECOND).max(1);
             format!(
-                "<figure class=\"kg-card kg-video-card kg-native-video\"{thumbnail}><div class=\"kg-video-container\"><video controls preload=\"metadata\" src=\"{}\"{poster} aria-label=\"{label}\">{fallback}</video></div><figcaption>{label}</figcaption></figure>\n",
-                escape(url)
+                "<figure class=\"kg-card kg-video-card kg-native-video\" data-kg-thumbnail=\"{}\"{custom}><div class=\"kg-video-container\"><video controls preload=\"metadata\" src=\"{}\" width=\"{width}\" height=\"{height}\"{poster} aria-label=\"{label}\">{fallback}</video></div><span class=\"kg-video-duration\" hidden>{}:{:02}</span><figcaption>{label}</figcaption></figure>\n",
+                escape(&metadata.thumbnail),
+                escape(url),
+                seconds / SECONDS_PER_MINUTE,
+                seconds % SECONDS_PER_MINUTE
             )
         },
         MediaKind::Audio => format!(
@@ -268,6 +282,7 @@ fn bookmark_poster<'a>(paragraph: &'a AstNode<'a>) -> bool {
 fn poster_pair<'a>(
     paragraph: &'a AstNode<'a>,
     types: &BTreeMap<String, MediaKind>,
+    videos: &BTreeMap<String, crate::video::Presentation>,
     options: &Options<'_>,
 ) -> Result<bool> {
     let children = paragraph.children().collect::<Vec<_>>();
@@ -317,6 +332,7 @@ fn poster_pair<'a>(
             url,
             MediaKind::Video,
             (index == 0).then_some(poster.as_str()),
+            videos.get(url),
             options,
         )?);
     }
@@ -332,6 +348,7 @@ pub(super) fn render<'a>(
     root: &'a AstNode<'a>,
     options: &Options<'_>,
     types: &BTreeMap<String, MediaKind>,
+    videos: &BTreeMap<String, crate::video::Presentation>,
 ) -> Result<()> {
     let paragraphs = root
         .descendants()
@@ -341,7 +358,7 @@ pub(super) fn render<'a>(
         if paragraph.parent().is_none() || !matches!(paragraph.data().value, NodeValue::Paragraph) {
             continue;
         }
-        if poster_pair(paragraph, types, options)? {
+        if poster_pair(paragraph, types, videos, options)? {
             continue;
         }
         if bookmark_poster(paragraph) {
@@ -381,7 +398,14 @@ pub(super) fn render<'a>(
                 html.push_str("</figure>\n");
             } else if let Some((url, kind)) = media_link(node, types) {
                 flush(&mut inline, &mut html);
-                html.push_str(&media_figure(node, &url, kind, None, options)?);
+                html.push_str(&media_figure(
+                    node,
+                    &url,
+                    kind,
+                    None,
+                    videos.get(&url),
+                    options,
+                )?);
             } else {
                 inline.push_str(&render_node(node, options)?);
             }

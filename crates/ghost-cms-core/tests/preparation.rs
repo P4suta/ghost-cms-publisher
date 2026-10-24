@@ -1,5 +1,7 @@
 //! Offline preparation contracts for complete publication collections.
 
+pub mod support;
+
 use ghost_cms_core::CoreError;
 use ghost_cms_core::preparation::PrepareOptions;
 use ghost_cms_shared::filesystem::prepare_collection;
@@ -138,7 +140,11 @@ fn media_labels_become_escaped_captions_and_video_posters_stay_paired()
         &post,
         include_str!("fixtures/preparation/media-captions.md"),
     )?;
-    let collection = prepare_collection(&[post], PrepareOptions::default())?;
+    let collection = ghost_cms_core::preparation::PreparedCollection::load(
+        &[post],
+        PrepareOptions::default(),
+        support::video_files(),
+    )?;
     let html = collection.posts()[0].rendered_html();
     let expected = include_str!("fixtures/preparation/media-captions.expected");
     assert_ne!(expected.trim(), "");
@@ -148,6 +154,8 @@ fn media_labels_become_escaped_captions_and_video_posters_stay_paired()
     assert!(html.contains("<video controls"));
     assert!(html.contains("<audio controls"));
     assert!(html.contains(" poster=\"https://ghost-cms.invalid/assets/"));
+    assert!(html.contains("width=\"360\" height=\"640\""));
+    assert!(html.contains("data-kg-thumbnail=\"https://ghost-cms.invalid/assets/"));
     assert_eq!(html.matches("<img ").count(), 1);
     assert_eq!(html.matches("<figcaption>").count(), 2);
     assert!(html.contains("kg-video-card") && html.contains("kg-audio-card"));
@@ -156,6 +164,22 @@ fn media_labels_become_escaped_captions_and_video_posters_stay_paired()
     let report = collection.report();
     assert_eq!(report.posts[0].rendering.media_captions, 3);
     assert_eq!(report.posts[0].rendering.uncaptioned_media, 0);
+    Ok(())
+}
+
+#[test]
+fn remote_video_links_remain_links_without_measured_local_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let file = temp.path().join("post.md");
+    std::fs::write(
+        &file,
+        "---\ntitle: Remote video\nslug: remote-video\n---\n[An external recording](https://example.invalid/recording.mp4)\n",
+    )?;
+    let collection = prepare_collection(&[file], PrepareOptions::default())?;
+    let html = collection.posts()[0].rendered_html();
+    assert!(html.contains("href=\"https://example.invalid/recording.mp4\""));
+    assert!(!html.contains("kg-video-card"));
     Ok(())
 }
 

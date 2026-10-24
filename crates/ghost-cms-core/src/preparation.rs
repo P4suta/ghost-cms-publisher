@@ -111,11 +111,34 @@ pub(crate) struct Asset {
     pub(crate) kind: AssetKind,
     pub(crate) size: u64,
     files: Files,
+    generated: Option<GeneratedAsset>,
+}
+
+#[derive(Debug, Clone)]
+struct GeneratedAsset {
+    bytes: Vec<u8>,
+    source: PathBuf,
+    source_digest: String,
 }
 
 impl Asset {
+    pub(crate) const fn generated_thumbnail(&self) -> bool {
+        self.generated.is_some()
+    }
     pub(crate) fn read_verified(&self) -> Result<Vec<u8>> {
-        let bytes = self.files.read(&self.path)?;
+        let bytes = if let Some(generated) = &self.generated {
+            if bytes_hash(&self.files.read(&generated.source)?).to_string()
+                != generated.source_digest
+            {
+                return Err(CoreError::FrontMatter(format!(
+                    "video changed after thumbnail preparation: {}",
+                    generated.source.display()
+                )));
+            }
+            generated.bytes.clone()
+        } else {
+            self.files.read(&self.path)?
+        };
         if bytes.len() as u64 != self.size || bytes_hash(&bytes).to_string() != self.digest {
             return Err(CoreError::FrontMatter(format!(
                 "media changed after validation: {}",
@@ -141,6 +164,7 @@ pub struct PreparedPost {
     headings: BTreeSet<String>,
     external: BTreeSet<String>,
     rendering: RenderReport,
+    videos: BTreeMap<String, crate::video::Presentation>,
 }
 
 impl PreparedPost {
@@ -215,6 +239,7 @@ impl PreparedPost {
             headings,
             external: BTreeSet::new(),
             rendering: RenderReport::default(),
+            videos: BTreeMap::new(),
         })
     }
 
@@ -377,18 +402,58 @@ impl PreparedPost {
         self.assets.insert(
             key.clone(),
             Asset {
-                path: target,
+                path: target.clone(),
                 key: key.clone(),
-                digest,
+                digest: digest.clone(),
                 mime,
                 kind,
                 size: metadata.bytes,
                 files: self.files.clone(),
+                generated: None,
             },
         );
+        if media::content_type(&target).starts_with("video/") {
+            self.prepare_video_asset(url, &target, &digest)?;
+        }
         let suffix = &url[path_part.len()..];
         Ok(format!("{ASSET_PREFIX}{key}{suffix}"))
     }
+    fn prepare_video_asset(&mut self, url: &str, target: &Path, digest: &str) -> Result<()> {
+        let metadata = self.files.prepare_video(target)?;
+        if bytes_hash(&self.files.read(target)?).to_string() != digest {
+            return Err(CoreError::FrontMatter(
+                "video changed during thumbnail preparation".to_owned(),
+            ));
+        }
+        let thumbnail_digest = bytes_hash(&metadata.thumbnail).to_string();
+        let thumbnail_key = content_hash(&[&thumbnail_digest, "image/jpeg"]).to_string();
+        self.assets.insert(
+            thumbnail_key.clone(),
+            Asset {
+                path: target.with_file_name(format!("{thumbnail_key}.jpg")),
+                key: thumbnail_key.clone(),
+                digest: thumbnail_digest,
+                mime: "image/jpeg".to_owned(),
+                kind: AssetKind::Image,
+                size: metadata.thumbnail.len() as u64,
+                files: self.files.clone(),
+                generated: Some(GeneratedAsset {
+                    bytes: metadata.thumbnail.clone(),
+                    source: target.to_owned(),
+                    source_digest: digest.to_owned(),
+                }),
+            },
+        );
+        self.videos.insert(
+            url.to_owned(),
+            crate::video::Presentation {
+                metadata,
+                thumbnail: format!("{ASSET_PREFIX}{thumbnail_key}"),
+            },
+        );
+        Ok(())
+    }
+
     /// Validated post metadata.
     #[must_use]
     pub const fn front(&self) -> &FrontMatter {
@@ -397,12 +462,17 @@ impl PreparedPost {
 
     /// Render publication HTML with uploaded asset URLs.
     fn render(&self, urls: &BTreeMap<String, String>) -> Result<String> {
-        render_with_urls(&self.body_md, self.allow_raw_html, |original| {
-            replace_asset(
-                self.rewrites.get(original).map_or(original, String::as_str),
-                urls,
-            )
-        })
+        render_with_urls(
+            &self.body_md,
+            self.allow_raw_html,
+            &self.videos,
+            |original| {
+                replace_asset(
+                    self.rewrites.get(original).map_or(original, String::as_str),
+                    urls,
+                )
+            },
+        )
     }
 
     pub(crate) fn publication(
@@ -410,6 +480,55 @@ impl PreparedPost {
         urls: &BTreeMap<String, String>,
     ) -> Result<crate::domain::PostInput> {
         Ok(self.input(&self.render(urls)?, urls))
+    }
+
+    pub(crate) fn video_patches(
+        &self,
+        urls: &BTreeMap<String, String>,
+    ) -> Result<BTreeMap<String, crate::video::VideoPatch>> {
+        let mut patches = BTreeMap::new();
+        for (original, video) in &self.videos {
+            let reference = self.rewrites.get(original).ok_or_else(|| {
+                CoreError::Inconsistent("prepared video has no source reference".to_owned())
+            })?;
+            let key = reference
+                .strip_prefix(ASSET_PREFIX)
+                .map(|value| value.split(['?', '#']).next().unwrap_or(value))
+                .ok_or_else(|| {
+                    CoreError::Inconsistent("prepared video has no asset identity".to_owned())
+                })?;
+            let asset = self.assets.get(key).ok_or_else(|| {
+                CoreError::Inconsistent("prepared video asset is missing".to_owned())
+            })?;
+            if !urls.contains_key(key) {
+                return Err(CoreError::Inconsistent(
+                    "video source has no recorded upload identity".to_owned(),
+                ));
+            }
+            let src = replace_asset(reference, urls);
+            patches.insert(
+                src.clone(),
+                crate::video::VideoPatch {
+                    src,
+                    thumbnail: replace_asset(&video.thumbnail, urls),
+                    width: video.metadata.shape.width(),
+                    height: video.metadata.shape.height(),
+                    duration_ms: video.metadata.shape.duration_ms(),
+                    thumbnail_width: video.metadata.thumbnail_width,
+                    thumbnail_height: video.metadata.thumbnail_height,
+                    file_name: asset
+                        .path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .ok_or_else(|| {
+                            CoreError::FrontMatter("video filename isn't UTF-8".to_owned())
+                        })?
+                        .to_owned(),
+                    mime_type: asset.mime.clone(),
+                },
+            );
+        }
+        Ok(patches)
     }
 
     pub(crate) fn report(&self) -> PostReport {
@@ -597,18 +716,28 @@ fn comrak_options(allow_raw_html: bool) -> Options<'static> {
 fn render_with_urls(
     body: &str,
     raw: bool,
+    videos: &BTreeMap<String, crate::video::Presentation>,
     mut rewrite: impl FnMut(&str) -> String,
 ) -> Result<String> {
     let arena = Arena::new();
     let mut options = comrak_options(raw);
     let root = parse_document(&arena, body, &options);
     let mut media_types = BTreeMap::new();
+    let mut rendered_videos = BTreeMap::new();
     for node in root.descendants() {
         match &mut node.data_mut().value {
             NodeValue::Link(link) => {
                 let kind = rich::classify(&link.url);
+                let video = videos.get(&link.url).cloned();
                 link.url = rewrite(&link.url);
-                if let Some(kind) = kind {
+                if let Some(mut video) = video {
+                    video.thumbnail = rewrite(&video.thumbnail);
+                    rendered_videos.insert(link.url.clone(), video);
+                }
+                if let Some(kind) = kind.filter(|kind| {
+                    !matches!(kind, rich::MediaKind::Video)
+                        || rendered_videos.contains_key(&link.url)
+                }) {
                     media_types.insert(link.url.clone(), kind);
                 }
             },
@@ -616,7 +745,7 @@ fn render_with_urls(
             _ => {},
         }
     }
-    rich::render(root, &options, &media_types)?;
+    rich::render(root, &options, &media_types, &rendered_videos)?;
     options.render.r#unsafe = true;
     let mut html = String::new();
     format_html(root, &options, &mut html)

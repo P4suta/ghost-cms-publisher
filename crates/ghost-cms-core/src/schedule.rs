@@ -21,8 +21,8 @@ const GHOST_SCHEDULING_LEAD_SECONDS: u64 = 120;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Draft {
-    id: String,
+pub(crate) struct Draft {
+    pub(crate) id: String,
     revision: String,
     remote_hash: String,
     feature_image: Option<String>,
@@ -30,13 +30,13 @@ struct Draft {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct DraftBatch {
-    version: u8,
-    destination: String,
-    site_url: String,
-    files: Vec<PathBuf>,
+pub(crate) struct DraftBatch {
+    pub(crate) version: u8,
+    pub(crate) destination: String,
+    pub(crate) site_url: String,
+    pub(crate) files: Vec<PathBuf>,
     sources: BTreeMap<String, String>,
-    posts: BTreeMap<String, Draft>,
+    pub(crate) posts: BTreeMap<String, Draft>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

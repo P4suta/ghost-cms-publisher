@@ -8,6 +8,79 @@ const RELEASE_LEAD_SECONDS: u64 = 1_800;
 const RELEASE_INTERVAL_SECONDS: u64 = 600;
 const HOUR_SECONDS: u64 = 3_600;
 
+/// Publication states observed during a metadata-only write.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(kani, derive(kani::Arbitrary))]
+pub enum MetadataPublicationState {
+    /// An unpublished post.
+    Draft,
+    /// A post awaiting its registered time.
+    Scheduled,
+    /// A public post.
+    Published,
+    /// An unsupported state.
+    Unknown,
+}
+
+/// Permit unchanged known states and Ghost's scheduled publication transition.
+#[must_use]
+pub const fn metadata_preserves_publication(
+    before: MetadataPublicationState,
+    after: MetadataPublicationState,
+) -> bool {
+    use MetadataPublicationState::{Draft, Published, Scheduled, Unknown};
+    match (before, after) {
+        (Draft, Draft) | (Scheduled, Scheduled | Published) | (Published, Published) => true,
+        (Unknown, _)
+        | (_, Unknown)
+        | (Draft, Scheduled | Published)
+        | (Scheduled | Published, Draft)
+        | (Published, Scheduled) => false,
+    }
+}
+
+/// Nonempty display dimensions and a positive measured duration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VideoShape {
+    width: u32,
+    height: u32,
+    duration_ms: u32,
+}
+
+impl VideoShape {
+    /// Refuse empty dimensions and durations.
+    #[must_use]
+    pub const fn new(width: u32, height: u32, duration_ms: u32) -> Option<Self> {
+        if width == 0 || height == 0 || duration_ms == 0 {
+            None
+        } else {
+            Some(Self {
+                width,
+                height,
+                duration_ms,
+            })
+        }
+    }
+
+    /// Display width in pixels.
+    #[must_use]
+    pub const fn width(self) -> u32 {
+        self.width
+    }
+
+    /// Display height in pixels.
+    #[must_use]
+    pub const fn height(self) -> u32 {
+        self.height
+    }
+
+    /// Measured duration in milliseconds.
+    #[must_use]
+    pub const fn duration_ms(self) -> u32 {
+        self.duration_ms
+    }
+}
+
 /// Durable progress before observing Ghost.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(kani, derive(kani::Arbitrary))]
@@ -200,6 +273,43 @@ pub fn valid_slug(bytes: &[u8]) -> bool {
 #[cfg(kani)]
 mod proofs {
     use super::{Content, Decision, Remote, decide, first_release_slot, release_slot, valid_slug};
+
+    #[kani::proof]
+    fn metadata_writes_never_unpublish_or_reschedule_posts() {
+        use super::{MetadataPublicationState as State, metadata_preserves_publication};
+        let before: State = kani::any();
+        let after: State = kani::any();
+        let preserved = metadata_preserves_publication(before, after);
+        assert_eq!(
+            preserved,
+            before != State::Unknown
+                && after != State::Unknown
+                && (before == after || (before == State::Scheduled && after == State::Published))
+        );
+        if before == State::Published && preserved {
+            assert_eq!(after, State::Published);
+        }
+        kani::cover!(preserved && before == after);
+        kani::cover!(preserved && before != after);
+        kani::cover!(!preserved);
+    }
+
+    #[kani::proof]
+    fn video_shapes_preserve_positive_measurements() {
+        let width: u32 = kani::any();
+        let height: u32 = kani::any();
+        let duration: u32 = kani::any();
+        let shape = super::VideoShape::new(width, height, duration);
+        assert_eq!(shape.is_some(), width > 0 && height > 0 && duration > 0);
+        if let Some(shape) = shape {
+            assert_eq!(shape.width(), width);
+            assert_eq!(shape.height(), height);
+            assert_eq!(shape.duration_ms(), duration);
+            kani::cover!(height > width);
+            kani::cover!(width > height);
+        }
+        kani::cover!(shape.is_none());
+    }
 
     #[kani::proof]
     fn registration_decisions_preserve_completed_and_uncertain_writes() {

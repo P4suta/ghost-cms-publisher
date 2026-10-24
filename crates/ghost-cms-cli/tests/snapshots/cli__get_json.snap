@@ -8,6 +8,7 @@ expression: stdout(&out)
   "feature_image_caption": null,
   "html": null,
   "id": "p1",
+  "lexical": null,
   "published_at": null,
   "slug": "hello",
   "status": "published",
