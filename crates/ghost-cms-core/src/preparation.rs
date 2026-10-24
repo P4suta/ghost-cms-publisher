@@ -213,7 +213,7 @@ impl PreparedPost {
         for node in root.descendants() {
             match &node.data().value {
                 NodeValue::Heading(_) => {
-                    headings.insert(anchorizer.anchorize(&comrak::html::collect_text(node)));
+                    headings.insert(anchorizer.anchorize(&node.collect_text()));
                 },
                 NodeValue::HtmlBlock(_) | NodeValue::HtmlInline(_) if !options.allow_raw_html => {
                     return Err(CoreError::FrontMatter(

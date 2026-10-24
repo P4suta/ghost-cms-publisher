@@ -110,7 +110,7 @@ fn media_figure<'a>(
     metadata: Option<&crate::video::Presentation>,
     options: &Options<'_>,
 ) -> Result<String> {
-    let label = escape(&comrak::html::collect_text(node));
+    let label = escape(&node.collect_text());
     let fallback = render_node(node, options)?;
     Ok(match kind {
         MediaKind::Video => {
@@ -175,7 +175,7 @@ fn bookmark_link<'a>(node: &'a AstNode<'a>) -> Option<(String, String, String)> 
     let NodeValue::Link(link) = &data.value else {
         return None;
     };
-    let title = comrak::html::collect_text(node).trim().to_owned();
+    let title = node.collect_text().trim().to_owned();
     if title.is_empty()
         || title == link.url
         || title.starts_with("http://")
@@ -223,7 +223,7 @@ fn bookmark<'a>(
             .descendants()
             .all(|n| !matches!(n.data().value, NodeValue::Image(_) | NodeValue::Link(_)))
     {
-        description = comrak::html::collect_text(child);
+        description = child.collect_text();
         next.detach();
     }
     let description = if description.is_empty() {
@@ -264,7 +264,7 @@ fn bookmark_poster<'a>(paragraph: &'a AstNode<'a>) -> bool {
             Some("www.youtube.com" | "youtube.com" | "youtu.be" | "vimeo.com" | "www.vimeo.com")
         )
     });
-    if !external_video || label != comrak::html::collect_text(image) {
+    if !external_video || label != image.collect_text() {
         return false;
     }
     let poster = match &image.data().value {
@@ -298,14 +298,14 @@ fn poster_pair<'a>(
     if !matches!(next.data().value, NodeValue::Paragraph) {
         return Ok(false);
     }
-    let label = comrak::html::collect_text(image);
+    let label = image.collect_text();
     if label.is_empty() {
         return Ok(false);
     }
     let mut links = Vec::new();
     for node in next.children() {
         if let Some((url, MediaKind::Video)) = media_link(node, types) {
-            if !comrak::html::collect_text(node).starts_with(&label) {
+            if !node.collect_text().starts_with(&label) {
                 return Ok(false);
             }
             links.push((node, url));
@@ -386,7 +386,7 @@ pub(super) fn render<'a>(
             if let Some(image) = image_node(node) {
                 flush(&mut inline, &mut html);
                 let image_html = render_node(node, options)?;
-                let caption = escape(&comrak::html::collect_text(image));
+                let caption = escape(&image.collect_text());
                 let caption = if caption.is_empty() {
                     String::new()
                 } else {

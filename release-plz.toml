@@ -1,14 +1,10 @@
-# release-plz configuration (https://release-plz.dev/).
-#
-# Version automation only — NOT crates.io publishing. All four crates are
-# `publish = false`; release-plz bumps the shared workspace version, updates the
-# single root CHANGELOG.md, and (via the representative crate below) cuts one
-# `v{version}` tag, which triggers release.yml to build and attach the binaries.
+# Release-plz maintains versions and the changelog for binary releases.
+# The CLI crate creates the version tag consumed by the release workflow.
 
 [workspace]
 release_always = false               # release only when the Release PR is merged
 publish = false                      # never `cargo publish` — binaries ship via GitHub Releases
-dependencies_update = false          # Dependabot owns dependency bumps
+dependencies_update = false          # Renovate updates dependencies.
 pr_branch_prefix = "release-plz-"
 pr_labels = ["autorelease: pending"] # ci.yml's release-gate requires "release: approved" to merge
 

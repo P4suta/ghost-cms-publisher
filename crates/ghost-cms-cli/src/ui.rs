@@ -93,7 +93,7 @@ pub(crate) const fn status_table_color(status: PostStatus) -> Color {
 pub(crate) fn table() -> Table {
     let mut table = Table::new();
     table
-        .load_preset(presets::UTF8_BORDERS_ONLY)
+        .load_style(presets::UTF8_BORDERS_ONLY)
         .set_content_arrangement(ContentArrangement::Dynamic);
     table
 }
