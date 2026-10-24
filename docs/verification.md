@@ -1,13 +1,15 @@
 # Local verification
 
 Checked on 2026-10-24 with Rust 1.99.1 and the tools in `mise.toml`.
-These results cover the scheduling implementation in [issue 27](https://github.com/P4suta/ghost-cms-publisher/issues/27) and the video card correction in [issue 29](https://github.com/P4suta/ghost-cms-publisher/issues/29).
+These results cover scheduling in [issue 27](https://github.com/P4suta/ghost-cms-publisher/issues/27), video card correction in [issue 29](https://github.com/P4suta/ghost-cms-publisher/issues/29), and dependency updates in [issue 33](https://github.com/P4suta/ghost-cms-publisher/issues/33).
 
 ## Executable contracts
 
 The workspace tests cover front matter, offline collection preparation, CLI output, HTTP requests, preview cleanup, media changes, and upload retry.
 They also check destination-scoped receipts, corrupt state, concurrent state access, explicit remote overrides, and invalid batches before network access.
-All 91 workspace tests passed, followed by the workspace documentation tests.
+All 92 workspace tests passed, followed by the workspace documentation tests.
+The MCP integration fixture starts the actual stdio binary with dummy credentials and an unused loopback destination.
+It negotiates protocol version 2025-06-18, checks all nine tool names and object schemas, and requires the Markdown publishing tool's file argument.
 The scheduling fixtures cover metadata corrections before freezing, foreign slug and page collisions, changed remote revisions, interrupted writes, retry adoption, and preservation of completed publication times.
 The editor readback regression rejects empty native containers and ignores them beside a complete HTML card.
 Native text nested inside links and documents containing only native media or code cards remain accepted.
@@ -69,25 +71,39 @@ Changes to parser versions, rendering rules, persistence adapters, or supported 
 
 ## Dependencies and credentials
 
-The complete dependency policy check passed with a clean RustSec database at revision `f7b2f6bc663452200bbe639ebb75e0c762b3422b`.
+The complete dependency policy check passed with a freshly fetched RustSec database at revision `8a5b8090ef20c9c1b425f3373f28b0b23cc5c7a0`.
 The audit configuration used the repository policy with only `advisories.db-path` changed to an isolated database directory.
 
 ```sh
-mise x -- cargo deny -L error --config /path/to/isolated-deny.toml --offline --locked check advisories bans licenses sources
+mise x -- cargo deny -L error --config /path/to/isolated-deny.toml --offline --locked --workspace check advisories bans licenses sources
 ```
 
-The Comrak configuration omits unused CLI and syntax-highlighting features.
-The YAML parser now uses deserialize-only serde-saphyr 2.0.0.
-The lockfile updates the affected TLS/HTTP dependencies and a yanked spin release.
-The bundled trust store resolves to `webpki-roots` 1.0.10, which removes the root covered by [RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381.html).
-The previous 1.0.8 lockfile failed this advisory check with the same database before the update.
-The `rmcp` crate and its macros resolve to 2.2.0, including the fix described in the [client transport advisory](https://github.com/advisories/GHSA-9g45-5xwm-f3wc).
-The enabled features use the stdio server transport.
-A real stdio session completed initialization, listed nine tools, rejected an invalid slug, and shut down successfully on input closure.
-The session used dummy credentials and an unused loopback destination.
-The existing RSA advisory exception remains narrow: authentication uses HS256 and never calls RSA operations.
-This result describes the recorded advisory snapshot rather than an online refresh.
+The refresh uses these versions:
+
+| Dependency | Version |
+| --- | --- |
+| Reqwest | 0.13.5 |
+| jsonwebtoken | 11.1.0 |
+| Comrak | 0.57.0 |
+| rmcp | 3.7.0 |
+| comfy-table | 8.0.1 |
+| Nextest | 0.9.149 |
+
+Reqwest explicitly enables query parameters and Rustls with platform trust verification.
+JSON Web Token (JWT) authentication still uses HS256 and now shares AWS-LC-RS with TLS.
+This removes the unused RustCrypto RSA and elliptic-curve dependency graph, including the crypto-bigint version rejected by the fresh advisory check.
+The old RSA advisory exception was removed, leaving no advisory exceptions.
+Comrak still omits unused CLI and syntax-highlighting features, and serde-saphyr remains deserialize-only.
+The rmcp features retain the stdio server transport.
+Cargo's update preview selected zero further packages, and mise reported no available project tool updates.
+Cargo upgrade also reported all 36 external dependency candidates current, including incompatible and pinned updates.
+The Ghost Alpine image and the pinned Kani and CBMC versions matched their checked upstream releases.
 Gitleaks 8.30.1 found no credentials in the workspace's Rust source and tests.
+
+All five GitHub Actions workflows passed actionlint and offline Zizmor checks with pedantic and strict modes enabled.
+The release-plz configuration passed validation using the schema generated by release-plz 0.4.0, which the updated action installs.
+Release workflows use the pinned Rust toolchain and the native GitHub CLI while retaining protected environments and immutable action references.
+GitHub event permissions, environment approval, provenance identity, and release publication were not exercised locally.
 
 ## Ghost integration boundary
 
@@ -112,3 +128,4 @@ Its preview changed no remote document or revision.
 The applied repair kept publication states and times, passed complete readback, skipped an unchanged second repair, and rejected a later changed caption.
 The native decoder measured the real files and generated frame thumbnails without changing their bytes.
 Inspection of the pinned image's `ghost_head` helper confirmed that normal helper output includes the packaged card assets without requiring a native bookmark node.
+The dependency refresh repeated the complete 125-post publication and video repair rehearsal successfully with the same media and card counts.

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use ghost_cms_core::Ghost;
 use rmcp::ServerHandler;
-use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
+use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use rmcp::tool_handler;
 
 /// The MCP server: a thin adapter over [`Ghost`].
@@ -23,13 +23,13 @@ pub(crate) struct GhostServer {
 #[tool_handler]
 #[expect(
     clippy::unused_async_trait_impl,
-    reason = "rmcp 2.0 generates the asynchronous tool-list handler from this implementation"
+    reason = "the SDK generates the asynchronous tool-list handler from this implementation"
 )]
 impl ServerHandler for GhostServer {
-    fn get_info(&self) -> ServerInfo {
+    fn get_info(&self) -> ServerConfig {
         // Set server_info explicitly; the default `from_build_env()` resolves to
         // rmcp's crate name/version, not ours.
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new(
                 env!("CARGO_PKG_NAME"),
                 env!("CARGO_PKG_VERSION"),

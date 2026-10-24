@@ -8,10 +8,6 @@ feature-depth = 1
 [advisories]
 version = 2
 yanked = "deny"
-# Transitive-only advisories; each entry notes why it is safe here.
-ignore = [
-    "RUSTSEC-2023-0071", # rsa (Marvin) — via jsonwebtoken rust_crypto; RSA unused (HS256 only)
-]
 
 [licenses]
 version = 2
