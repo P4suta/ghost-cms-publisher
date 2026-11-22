@@ -24,7 +24,7 @@ use scraper::{Html, Selector};
 use serde::Deserialize;
 
 const IMAGE: &str =
-    "ghost:6.77.0-alpine@sha256:a1c2adb3ab81b6d3fcae4d33bebe56a94a57c3e76c2f0b7b3d213726b2ca8922";
+    "ghost:6.78.0-alpine@sha256:baa6dbff91a28ba36c526d1f6e761deb2efe3c238c630c3f318b62f258c2d76e";
 const READY_ATTEMPTS: u16 = 120;
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
