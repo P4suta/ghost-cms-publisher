@@ -158,10 +158,9 @@ fn set_html<'a>(node: &'a AstNode<'a>, html: String) {
     for child in children {
         child.detach();
     }
-    node.data_mut().value = NodeValue::HtmlBlock(NodeHtmlBlock {
-        block_type: GENERATED_HTML_BLOCK_TYPE,
-        literal: html,
-    });
+    let mut block = NodeHtmlBlock::new(html);
+    block.block_type = GENERATED_HTML_BLOCK_TYPE;
+    node.data_mut().value = NodeValue::HtmlBlock(block);
 }
 
 fn single_child<'a>(node: &'a AstNode<'a>) -> Option<&'a AstNode<'a>> {
